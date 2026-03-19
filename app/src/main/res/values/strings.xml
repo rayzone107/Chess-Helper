@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Chess Helper</string>
+    <string name="overlay_notification_channel_name">Chess overlay</string>
+    <string name="overlay_notification_title">Chess Helper overlay active</string>
+    <string name="overlay_notification_text">Tap to return to Chess Helper or stop the floating board.</string>
+    <string name="overlay_notification_stop_action">Stop overlay</string>
+</resources>

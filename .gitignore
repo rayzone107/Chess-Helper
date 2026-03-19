@@ -1,0 +1,22 @@
+*.iml
+.gradle
+/local.properties
+local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.idea/
+.DS_Store
+/build
+/app/build
+**/build/
+/captures
+.externalNativeBuild
+.cxx
+
+# Local Stockfish binaries must not be committed in uncompressed form.
+/stockfish/stockfish-android-armv8
+/app/src/main/assets/stockfish/stockfish-android-armv8
