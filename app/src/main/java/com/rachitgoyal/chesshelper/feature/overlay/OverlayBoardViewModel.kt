@@ -15,6 +15,7 @@ import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
 import com.rachitgoyal.chesshelper.engine.model.EngineRecommendation
+import com.rachitgoyal.chesshelper.settings.AppSettings
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -23,6 +24,7 @@ import kotlin.math.roundToInt
 class OverlayBoardViewModel(
     private val store: ChessGameStore = ChessGameStore(),
     private val moveRecommendationEngine: MoveRecommendationEngine,
+    private val appSettings: AppSettings? = null,
     private val recommendationExecutor: ExecutorService = Executors.newSingleThreadExecutor(),
     private val uiExecutor: Executor = defaultUiExecutor(),
 ) : ViewModel() {
@@ -36,6 +38,7 @@ class OverlayBoardViewModel(
 
     init {
         syncFromStore()
+        uiState = uiState.copy(autoApplyBestMove = appSettings?.autoApplyBestMove ?: false)
     }
 
     fun onRootBoundsChanged(size: IntSize) {
@@ -164,6 +167,7 @@ class OverlayBoardViewModel(
         val requestVersion = recommendationRequestVersion
         val requestedPosition = store.currentPosition()
         val requestedSide = uiState.assistedSide
+        val currentAutoApply = appSettings?.autoApplyBestMove ?: false
 
         uiState = uiState.copy(
             recommendationState = RecommendationState.LOADING,
@@ -171,6 +175,7 @@ class OverlayBoardViewModel(
             isRecommendationStale = false,
             recommendationStatusLabel = null,
             recommendationError = null,
+            autoApplyBestMove = currentAutoApply,
         )
 
         recommendationExecutor.execute {
@@ -206,7 +211,14 @@ class OverlayBoardViewModel(
                                 isRecommendationStale = false,
                                 recommendationStatusLabel = null,
                                 recommendationError = null,
-                            )
+                                autoApplyBestMove = currentAutoApply,
+                            ).also {
+                                uiState = it
+                                // Auto-apply: immediately play the move if the setting is on.
+                                if (currentAutoApply) onApplyRecommendationClicked()
+                            }
+                            // onApplyRecommendationClicked already updated uiState; return early.
+                            return@execute
                         } else {
                             uiState.copy(
                                 recommendationState = RecommendationState.ERROR,

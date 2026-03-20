@@ -9,29 +9,69 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.rachitgoyal.chesshelper.feature.settings.SettingsScreen
+import com.rachitgoyal.chesshelper.settings.AppSettings
+
+private enum class AppScreen { HOME, SETTINGS }
 
 @Composable
 fun ChessHelperApp(
+    appSettings: AppSettings,
     overlayPermissionGranted: Boolean,
     overlayRunning: Boolean,
     onLaunchOverlay: () -> Unit,
     onStopOverlay: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
+) {
+    var screen by remember { mutableStateOf(AppScreen.HOME) }
+
+    when (screen) {
+        AppScreen.SETTINGS -> SettingsScreen(
+            appSettings = appSettings,
+            onBack = { screen = AppScreen.HOME },
+        )
+
+        AppScreen.HOME -> HomeScreen(
+            overlayPermissionGranted = overlayPermissionGranted,
+            overlayRunning = overlayRunning,
+            onLaunchOverlay = onLaunchOverlay,
+            onStopOverlay = onStopOverlay,
+            onOpenOverlaySettings = onOpenOverlaySettings,
+            onOpenSettings = { screen = AppScreen.SETTINGS },
+        )
+    }
+}
+
+@Composable
+private fun HomeScreen(
+    overlayPermissionGranted: Boolean,
+    overlayRunning: Boolean,
+    onLaunchOverlay: () -> Unit,
+    onStopOverlay: () -> Unit,
+    onOpenOverlaySettings: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Box(
@@ -46,6 +86,17 @@ fun ChessHelperApp(
                     ),
                 ),
         ) {
+            // Settings icon in the top-right corner
+            IconButton(
+                onClick = onOpenSettings,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(8.dp),
+            ) {
+                Text(text = "⚙", fontSize = 22.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
+
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -137,4 +188,3 @@ fun ChessHelperApp(
         }
     }
 }
-

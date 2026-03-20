@@ -96,12 +96,15 @@ fun OverlayControls(
             }
         }
 
-        Button(
-            onClick = onApplyRecommendationClicked,
-            enabled = uiState.canApplyRecommendation,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Play suggested move")
+        // Only show the manual "Play suggested move" button when auto-apply is OFF.
+        if (!uiState.autoApplyBestMove) {
+            Button(
+                onClick = onApplyRecommendationClicked,
+                enabled = uiState.canApplyRecommendation,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Play suggested move")
+            }
         }
 
         OutlinedButton(

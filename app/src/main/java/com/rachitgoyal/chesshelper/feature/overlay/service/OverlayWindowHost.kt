@@ -15,6 +15,7 @@ import com.rachitgoyal.chesshelper.engine.stockfish.StockfishMoveRecommendationE
 import com.rachitgoyal.chesshelper.R
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayBoardViewModel
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayWindowContent
+import com.rachitgoyal.chesshelper.settings.AppSettings
 import com.rachitgoyal.chesshelper.ui.theme.ChessHelperTheme
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -27,6 +28,7 @@ class OverlayWindowHost(
     private val windowManager = appContext.getSystemService(WindowManager::class.java)
     private val overlayViewModel = OverlayBoardViewModel(
         moveRecommendationEngine = StockfishMoveRecommendationEngine(appContext),
+        appSettings = AppSettings(appContext),
     )
 
     private var overlayView: ComposeView? = null

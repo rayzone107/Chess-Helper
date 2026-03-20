@@ -9,7 +9,6 @@ import com.rachitgoyal.chesshelper.domain.chess.model.PieceType
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
-import com.rachitgoyal.chesshelper.engine.local.LocalHeuristicMoveRecommendationEngine
 import com.rachitgoyal.chesshelper.engine.model.EngineRecommendation
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
@@ -21,9 +20,20 @@ import org.junit.Test
 
 class OverlayBoardViewModelTest {
 
+    /**
+     * Minimal stub engine: returns the first legal move for the requested side,
+     * or null if it's not that side's turn. Replaces the deleted LocalHeuristicEngine.
+     */
+    private val stubEngine = MoveRecommendationEngine { position, assistedSide ->
+        if (position.sideToMove != assistedSide) return@MoveRecommendationEngine null
+        ChessRules.legalMoves(position).firstOrNull()?.let { move ->
+            EngineRecommendation(move = move, score = 0, summary = move.notation)
+        }
+    }
+
     @Test
     fun recommendationBecomesAvailableAfterOpponentMoveForBlackPlayer() {
-        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
 
         assertFalse(viewModel.uiState.canRecommend)
 
@@ -36,7 +46,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun recommendationIsAvailableImmediatelyWhenPlayingWhite() {
-        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
 
         viewModel.onAssistedSideChanged(Side.WHITE)
 
@@ -66,7 +76,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun requestingRecommendationPopulatesSummaryAndMarksItStaleAfterNextMove() {
-        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
 
         viewModel.onSquareTapped("e2")
         viewModel.onSquareTapped("e4")
@@ -86,7 +96,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun undoClearsRecommendationAndResetsToIdle() {
-        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
 
         viewModel.onSquareTapped("e2")
         viewModel.onSquareTapped("e4")
@@ -102,7 +112,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun applyingRecommendationMakesTheMoveAndClearsPreview() {
-        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
 
         viewModel.onAssistedSideChanged(Side.WHITE)
         viewModel.onRecommendClicked()
@@ -204,7 +214,7 @@ class OverlayBoardViewModelTest {
                     "a8" to king(Side.BLACK),
                 ),
             ),
-            moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine(),
+            moveRecommendationEngine = stubEngine,
         )
 
         viewModel.onAssistedSideChanged(Side.WHITE)
@@ -226,7 +236,7 @@ class OverlayBoardViewModelTest {
                     "f6" to king(Side.WHITE),
                 ),
             ),
-            moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine(),
+            moveRecommendationEngine = stubEngine,
         )
 
         assertEquals(GameStatus.CHECKMATE, viewModel.uiState.gameStatus)
@@ -246,7 +256,7 @@ class OverlayBoardViewModelTest {
                     "f7" to king(Side.WHITE),
                 ),
             ),
-            moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine(),
+            moveRecommendationEngine = stubEngine,
         )
 
         viewModel.onAssistedSideChanged(Side.BLACK)
@@ -295,25 +305,17 @@ class OverlayBoardViewModelTest {
 
     private fun awaitRecommendation(viewModel: OverlayBoardViewModel) {
         repeat(40) {
-            if (viewModel.uiState.recommendationState != RecommendationState.LOADING) {
-                return
-            }
+            if (viewModel.uiState.recommendationState != RecommendationState.LOADING) return
             Thread.sleep(25)
         }
         throw AssertionError("Recommendation did not finish loading in time")
     }
 
     private fun position(sideToMove: Side, vararg pieces: Pair<String, Piece>): ChessPosition {
-        return ChessPosition(
-            board = linkedMapOf(*pieces),
-            sideToMove = sideToMove,
-        )
+        return ChessPosition(board = linkedMapOf(*pieces), sideToMove = sideToMove)
     }
 
     private fun king(side: Side) = Piece(side, PieceType.KING)
-
     private fun queen(side: Side) = Piece(side, PieceType.QUEEN)
-
     private fun rook(side: Side) = Piece(side, PieceType.ROOK)
 }
-

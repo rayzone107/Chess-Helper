@@ -1,12 +1,12 @@
 package com.rachitgoyal.chesshelper.domain.chess.model
 
-enum class PieceType(val materialValue: Int) {
-    KING(20_000),
-    QUEEN(900),
-    ROOK(500),
-    BISHOP(330),
-    KNIGHT(320),
-    PAWN(100)
+enum class PieceType {
+    KING,
+    QUEEN,
+    ROOK,
+    BISHOP,
+    KNIGHT,
+    PAWN
 }
 
 data class Piece(

@@ -12,19 +12,23 @@ import androidx.core.content.ContextCompat.startForegroundService
 import com.rachitgoyal.chesshelper.feature.overlay.service.OverlayWindowService
 import com.rachitgoyal.chesshelper.feature.overlay.service.OverlayWindowServiceState
 import com.rachitgoyal.chesshelper.ui.theme.ChessHelperTheme
+import com.rachitgoyal.chesshelper.settings.AppSettings
 import com.rachitgoyal.chesshelper.ui.app.ChessHelperApp
 
 class MainActivity : ComponentActivity() {
     private var overlayPermissionGranted by mutableStateOf(false)
     private var pendingOverlayLaunch by mutableStateOf(false)
+    private lateinit var appSettings: AppSettings
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        appSettings = AppSettings(applicationContext)
         refreshOverlayPermission()
         setContent {
             ChessHelperTheme {
                 ChessHelperApp(
+                    appSettings = appSettings,
                     overlayPermissionGranted = overlayPermissionGranted,
                     overlayRunning = OverlayWindowServiceState.isRunning,
                     onLaunchOverlay = ::launchOverlay,

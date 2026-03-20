@@ -39,6 +39,8 @@ data class OverlayBoardUiState(
     val isRecommendationStale: Boolean = false,
     val recommendationStatusLabel: String? = null,
     val recommendationError: String? = null,
+    /** Mirrors [AppSettings.autoApplyBestMove]. Refreshed each time a recommendation is requested. */
+    val autoApplyBestMove: Boolean = true,
 ) {
     val isGameOver: Boolean
         get() = gameStatus.isTerminal
@@ -46,8 +48,6 @@ data class OverlayBoardUiState(
     val canUndo: Boolean
         get() = moveHistory.isNotEmpty()
 
-    val playerSide: Side
-        get() = assistedSide
 
     val boardBottomSide: Side
         get() = assistedSide
