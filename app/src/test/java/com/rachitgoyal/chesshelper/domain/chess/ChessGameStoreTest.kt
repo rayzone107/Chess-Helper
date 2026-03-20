@@ -1,5 +1,8 @@
 package com.rachitgoyal.chesshelper.domain.chess
 
+import com.rachitgoyal.chesshelper.domain.chess.model.ChessPosition
+import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
+import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.PieceType
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import org.junit.Assert.assertEquals
@@ -69,5 +72,59 @@ class ChessGameStoreTest {
         assertEquals("e5", snapshot.selectedSquare)
         assertTrue(snapshot.legalTargets.contains("d6"))
     }
+
+    @Test
+    fun snapshotSurfacesCheckStatusAndCheckedKingSquare() {
+        val store = ChessGameStore(
+            initialPosition = position(
+                sideToMove = Side.WHITE,
+                "e1" to king(Side.WHITE),
+                "e8" to rook(Side.BLACK),
+                "a8" to king(Side.BLACK),
+            ),
+        )
+
+        val snapshot = store.snapshot()
+
+        assertEquals(GameStatus.CHECK, snapshot.gameStatus)
+        assertEquals("e1", snapshot.checkedKingSquare)
+        assertFalse(snapshot.isGameOver)
+    }
+
+    @Test
+    fun tapSquareRejectsMoveThatWouldLeaveOwnKingInCheck() {
+        val store = ChessGameStore(
+            initialPosition = position(
+                sideToMove = Side.WHITE,
+                "e1" to king(Side.WHITE),
+                "e2" to rook(Side.WHITE),
+                "e8" to rook(Side.BLACK),
+                "a8" to king(Side.BLACK),
+            ),
+        )
+
+        assertFalse(store.tapSquare("e2"))
+        assertEquals(setOf("e3", "e4", "e5", "e6", "e7", "e8"), store.snapshot().legalTargets)
+
+        assertFalse(store.tapSquare("d2"))
+
+        val snapshot = store.snapshot()
+        assertEquals(Side.WHITE, snapshot.sideToMove)
+        assertNull(snapshot.lastMove)
+        assertNull(snapshot.board["d2"])
+        assertEquals(PieceType.ROOK, snapshot.board["e2"]?.type)
+        assertNull(snapshot.selectedSquare)
+    }
+
+    private fun position(sideToMove: Side, vararg pieces: Pair<String, Piece>): ChessPosition {
+        return ChessPosition(
+            board = linkedMapOf(*pieces),
+            sideToMove = sideToMove,
+        )
+    }
+
+    private fun king(side: Side) = Piece(side, PieceType.KING)
+
+    private fun rook(side: Side) = Piece(side, PieceType.ROOK)
 }
 

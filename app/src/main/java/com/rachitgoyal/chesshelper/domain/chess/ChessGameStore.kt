@@ -16,13 +16,15 @@ class ChessGameStore(
     private var legalTargets: Set<String> = emptySet()
 
     fun snapshot(): GameSnapshot {
+        val gameStatus = ChessRules.gameStatus(position)
         return GameSnapshot(
             position = position,
             selectedSquare = selectedSquare,
             legalTargets = legalTargets,
             lastMove = moveHistory.lastOrNull(),
             moveHistory = moveHistory.toList(),
-            isGameOver = ChessRules.isGameOver(position),
+            gameStatus = gameStatus,
+            checkedKingSquare = ChessRules.checkedKingSquare(position),
         )
     }
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +36,7 @@ fun ChessBoard(
     selectedSquare: String?,
     legalTargets: Set<String>,
     lastMove: MoveRecord?,
+    checkedKingSquare: String?,
     recommendedMove: MoveRecord?,
     bottomSide: Side,
     onSquareTapped: (String) -> Unit,
@@ -115,6 +117,7 @@ fun ChessBoard(
                         val squareId = "${('a'.code + file).toChar()}${rank + 1}"
                         val piece = board[squareId]
                         val isLegalTarget = squareId in legalTargets
+                        val isCheckedKing = squareId == checkedKingSquare
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -122,6 +125,14 @@ fun ChessBoard(
                                 .clickable { onSquareTapped(squareId) },
                             contentAlignment = Alignment.Center,
                         ) {
+                            if (isCheckedKing) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(3.dp)
+                                        .border(3.dp, Color(0xFFEF4444), RoundedCornerShape(8.dp)),
+                                )
+                            }
                             if (piece != null) {
                                 Text(
                                     text = piece.symbol,

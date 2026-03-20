@@ -1,16 +1,17 @@
 ---
-kind: agent
-name: tester
-purpose: Define and run the smallest useful validation set for the current change.
+name: "Tester"
+description: "Define and run the smallest useful validation set for the current change."
 tools:
-  - read_file
-  - file_search
-  - grep_search
-  - semantic_search
-  - create_file
-  - apply_patch
-  - run_in_terminal
-  - get_errors
+  [
+    "read_file",
+    "file_search",
+    "grep_search",
+    "semantic_search",
+    "create_file",
+    "apply_patch",
+    "run_in_terminal",
+    "get_errors"
+  ]
 reads:
   required:
     - .github/skills/repo-context.skill.md

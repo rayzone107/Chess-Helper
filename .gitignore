@@ -18,5 +18,9 @@ local.properties
 .cxx
 
 # Local Stockfish binaries must not be committed in uncompressed form.
+# These exceed GitHub's 100 MB file-size limit.
 /stockfish/stockfish-android-armv8
 /app/src/main/assets/stockfish/stockfish-android-armv8
+/app/src/main/assets/stockfish/stockfish-android-armv8.gz
+/app/src/main/assets/stockfish/stockfish-android-x86_64.gz
+/app/src/main/jniLibs/

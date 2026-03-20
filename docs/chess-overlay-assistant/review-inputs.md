@@ -7,11 +7,12 @@ input_refs:
   - docs/chess-overlay-assistant/design.md
   - docs/chess-overlay-assistant/status.md
 code_refs:
+  - app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngine.kt
+  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt
+  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt
+  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/service/OverlayWindowHost.kt
   - app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt
-  - app/src/androidTest/java/com/rachitgoyal/chesshelper/OverlayPanelUiTest.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/ChessRules.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/engine/MoveRecommendationEngine.kt
-last_updated: 2026-03-18
+last_updated: 2026-03-19
 ---
 - id: review-1
   status: resolved
@@ -55,6 +56,37 @@ last_updated: 2026-03-18
   file_refs:
     - app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt
     - docs/chess-overlay-assistant/plan.md
+
+- id: review-6
+  status: resolved
+  severity: high
+  problem: The first implementation draft of the stronger Stockfish slice kept two hidden fallback/lifecycle gaps: `OverlayBoardViewModel` still defaulted to `LocalHeuristicMoveRecommendationEngine()`, and the service-hosted `OverlayWindowHost` view-model instance is not owned by `ViewModelProvider`, so its persistent engine would not be closed by `onCleared()`. That would leave a non-Stockfish default path in code and risk leaking a long-lived engine process in the overlay-service flow.
+  required_change: Remove the implicit heuristic default from `OverlayBoardViewModel` and make the service-hosted overlay own/close its `StockfishMoveRecommendationEngine` explicitly when the overlay is hidden/destroyed.
+  file_refs:
+    - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt
+    - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/service/OverlayWindowHost.kt
+  resolution_note: >-
+    `OverlayBoardViewModel` now defaults to an explicit no-op engine instead of the heuristic engine,
+    and all recommendation-dependent tests inject the engine they need. The service-hosted path now
+    exposes `OverlayBoardViewModel.dispose()` and calls it from `OverlayWindowHost.hide()`, so the
+    overlay shuts down both its persistent Stockfish process and its recommendation executor without
+    relying on `ViewModel.onCleared()`.
+
+- id: review-7
+  status: resolved
+  severity: medium
+  problem: The overlay previously collapsed every recommendation failure into generic `No move`, which would still hide the root cause after removing heuristic fallback. The stronger Stockfish slice needed to distinguish real engine failures from genuine no-move outcomes and keep the expanded banner capable of showing the detailed failure reason.
+  required_change: Carry an explicit compact status label plus a separate detail message through `OverlayBoardUiState`, map engine exceptions to `Engine error` in the view-model, and render the detailed message in the expanded recommendation banner.
+  file_refs:
+    - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt
+    - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt
+    - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt
+    - app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt
+  resolution_note: >-
+    `OverlayBoardUiState` now separates `recommendationStatusLabel` from the detailed banner text,
+    `OverlayBoardViewModel` maps surfaced Stockfish exceptions to `Engine error` with an explicit retry
+    message, and the expanded banner renders that detail instead of generic `No move`. The view-model
+    regression suite now asserts both engine-failure and no-move outcomes.
 
 
 

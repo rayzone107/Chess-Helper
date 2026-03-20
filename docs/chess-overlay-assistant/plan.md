@@ -10,7 +10,7 @@ code_refs:
   - app/src/main/AndroidManifest.xml
   - app/build.gradle.kts
   - gradle/libs.versions.toml
-last_updated: 2026-03-18
+last_updated: 2026-03-19
 ---
 
 ## Plan v2026-03-17.1
@@ -279,3 +279,155 @@ last_updated: 2026-03-18
 
 ### Next reader
 - Start by restoring `OverlayPanel.kt`, `OverlayControls.kt`, and `ChessBoard.kt`; do **not** revert `MainActivity`, `AndroidManifest.xml`, `OverlayWindowService.kt`, `OverlayWindowHost.kt`, or anything under `engine/stockfish/` unless a narrowly scoped compatibility issue is proven.
+
+
+## Plan v2026-03-18.6
+
+### Route choice: lightest complete enhancement
+- Stay on the existing `chess-overlay-assistant` slug.
+- Treat this as an **enhancement to the current domain + overlay stack**, not a new feature track and not an engine rewrite.
+- Keep move legality in `domain/chess`; do **not** make Stockfish responsible for blocking user moves. Stockfish should continue to recommend moves only, while the app validates both user-entered and engine-suggested moves against the current legal move set.
+
+### Why this is the lightest route
+- `ChessRules.legalMovesFrom(...)` already filters moves that leave the moving side in check via `!isKingInCheck(...)`.
+- `ChessGameStore.tapSquare(...)` and `ChessGameStore.applyMove(...)` already route all move entry through that legal-move layer.
+- `StockfishMoveTranslator.legalMoveFromUci(...)` already rejects engine output that is not legal in the current position.
+- The missing pieces are mainly: **explicit game-state classification**, **clear UI surfacing for check/checkmate**, and **regression coverage**.
+
+### Implementation shape
+- Add a small domain-facing game-status model so the overlay can distinguish:
+  - `NORMAL`
+  - `CHECK`
+  - `CHECKMATE`
+  - `STALEMATE`
+- Expose the checked king square when relevant so the board can render a clear in-play signal without inventing new legality rules in the UI.
+- Keep recommendation behavior aligned with the new state:
+  - recommend stays disabled for terminal states
+  - stale/ready recommendation text must not hide check/checkmate status
+  - `Play suggested move` continues to rely on store legality, not Stockfish authority
+
+### Exact file refs to inspect/change
+- Inspect/change `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/ChessRules.kt`
+  - add a small helper/API for position-state classification using existing `isKingInCheck(...)` + `legalMoves(...)`
+  - keep legality authority here
+- Inspect/change `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/ChessGameStore.kt`
+  - surface the richer status in snapshots
+  - keep move-entry blocking behavior unchanged except for any bug fix uncovered by tests
+- Inspect/change `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/model/GameSnapshot.kt`
+  - add `gameStatus` and any checked-king-square field the UI needs
+- Likely add `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/model/GameStatus.kt` *(new)*
+- Inspect/change `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt`
+  - carry UI-facing check/checkmate state
+  - ensure `canRecommend` and compact status text derive from terminal-state data instead of `isGameOver` alone
+- Inspect/change `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt`
+  - propagate richer snapshot state with no new legality logic
+  - keep recommendation invalidation behavior intact
+- Inspect/change `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/ChessBoard.kt`
+  - add a clear checked-king visual treatment that coexists with selection/legal-target/last-move highlights
+- Inspect/change `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt`
+  - show concise `Check` / `Checkmate` / `Stalemate` status in the existing compact chrome/banner
+- Inspect/confirm `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveTranslator.kt`
+  - no behavior change expected beyond preserving the current legal-move validation of engine output
+- Inspect/change `app/src/test/java/com/rachitgoyal/chesshelper/domain/chess/ChessGameStoreTest.kt`
+  - add store-level legality/status assertions
+- Likely add `app/src/test/java/com/rachitgoyal/chesshelper/domain/chess/ChessRulesTest.kt` *(new)*
+  - add focused rules regressions for check, checkmate, stalemate, and self-check filtering
+- Inspect/change `app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt`
+  - assert UI-state propagation for check/checkmate and recommendation gating in terminal positions
+- Optional follow-up only if text semantics change materially: `app/src/androidTest/java/com/rachitgoyal/chesshelper/OverlayPanelUiTest.kt`
+
+### Ordered tasks
+| # | Task | Owner | Depends on | Repo refs | Acceptance check |
+|---|---|---|---|---|---|
+| 1 | Lock the authority decision: domain rules stay authoritative for legality; Stockfish remains recommendation-only and continues to be validated through legal-move translation. | planner/reviewer | brief + current code | `docs/chess-overlay-assistant/brief.md`, `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/ChessRules.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveTranslator.kt` | The plan/status docs explicitly state that invalid-move prevention does **not** move into Stockfish. |
+| 2 | Add explicit game-state classification in the domain layer and surface it through snapshots. | android-dev | 1 | `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/ChessRules.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/ChessGameStore.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/model/GameSnapshot.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/domain/chess/model/GameStatus.kt` *(new)* | The app can distinguish normal/check/checkmate/stalemate without inferring from `isGameOver` alone. |
+| 3 | Surface the new state in overlay UI with the smallest clear gameplay treatment: compact status text plus checked-king emphasis on the board, while preserving current selection/last-move/recommendation visuals. | android-dev | 2 | `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/ChessBoard.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt` | During live play, check is clearly visible and terminal states label checkmate vs stalemate correctly without regressing the existing overlay chrome. |
+| 4 | Back the slice with regression coverage for legality and state propagation, especially positions where the king is in check or a move would expose the king. | android-dev | 2,3 | `app/src/test/java/com/rachitgoyal/chesshelper/domain/chess/ChessRulesTest.kt` *(new)*, `app/src/test/java/com/rachitgoyal/chesshelper/domain/chess/ChessGameStoreTest.kt`, `app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt` | Tests cover self-check filtering, forced-response-while-in-check behavior, checkmate/stalemate classification, and UI recommendation gating in terminal states. |
+| 5 | Re-review the implementation against the authority decision and the open review risk around broader chess-rules coverage, then hand off to testing with a concise manual sanity checklist. | reviewer/tester | 4 | `review-inputs.md`, `docs/chess-overlay-assistant/status.md`, above code refs | Reviewer confirms Stockfish did not become the legality gate, and testing gets a short checklist for check, checkmate, stalemate, and invalid-move attempts. |
+
+### Decisions locked for this slice
+- **D21 resolved (2026-03-18)**: Stockfish should **not** directly prevent user moves. The legal-move gate remains `ChessRules`/`ChessGameStore`; Stockfish is asynchronous, optional, and already safely translated back through the legal move list.
+- **D22 resolved (2026-03-18)**: The smallest clear UI treatment is a compact status signal plus a checked-king board highlight, not a new modal/banner flow.
+- **D23 open**: Decide whether the non-check terminal state should now show explicit `Stalemate` text everywhere, or whether only checkmate gets special wording while other terminal states remain `Game over`.
+
+### Reviewer focus
+- Verify that the implementation does not duplicate legality logic between `ChessRules`, `ChessGameStore`, `OverlayBoardViewModel`, and the UI.
+- Verify that checkmate is not inferred from `isGameOver` alone; the side-to-move must also be in check.
+- Verify that any engine-suggested move still goes through store/domain legality checks before application.
+
+### Next reader
+- Start in `ChessRules.kt` and `GameSnapshot.kt`, not in `OverlayPanel.kt`: the UI cannot show check/checkmate clearly until the domain layer exposes the correct status and checked-king signal.
+
+
+
+## Plan v2026-03-19.1
+
+### Route choice: smallest complete enhancement
+- Stay on the existing `chess-overlay-assistant` slug.
+- Treat this as a **targeted engine-quality enhancement** to the current Stockfish-backed recommendation path, not a new engine architecture and not a domain-rules rewrite.
+- Keep `StockfishMoveTranslator` / legal-move validation in place so stronger analysis does not bypass app legality checks.
+
+### Why this is the lightest route
+- The repo already packages Stockfish assets and constructs `StockfishMoveRecommendationEngine` in both production overlay entry points:
+  - `OverlayBoardViewModelFactory.kt`
+  - `feature/overlay/service/OverlayWindowHost.kt`
+- The biggest quality problem is not missing engine integration; it is the **current engine lifecycle and failure policy**:
+  - a brand-new Stockfish process is started for every request
+  - search defaults are short/weak for analysis quality
+  - any engine failure silently drops to the heuristic engine
+  - the overlay compresses recommendation failures into generic `No move`
+- Fixing those points directly yields a stronger user-facing result with the smallest code delta.
+
+### Implementation shape
+- Replace the per-request process model in `StockfishMoveRecommendationEngine` with a **persistent reusable UCI session** that:
+  - installs the binary once as today
+  - starts Stockfish once per engine instance
+  - performs `uci`/`isready` handshake once
+  - reuses the same process for subsequent `position fen ...` + `go ...` requests
+  - tears the process down when the owning view-model/host is cleared
+- Strengthen default analysis settings for recommendation quality, favoring stronger output over latency. Expected levers for this pass:
+  - longer search time per move
+  - larger hash size
+  - explicit analysis-mode UCI options where available
+- Remove heuristic fallback from the production Stockfish path. Engine startup/search/parse failures should become explicit surfaced errors instead of silently returning `LocalHeuristicMoveRecommendationEngine` moves.
+- Keep the overlay UI compact but explicit:
+  - loading: `Analyzing…`
+  - ready: current best-move behavior
+  - failure: compact engine-error status plus an expanded-mode detail line/message
+
+### Exact file refs to inspect/change
+- `app/src/main/java/com/rachitgoyal/chesshelper/engine/MoveRecommendationEngine.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishAssetInstaller.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngine.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveTranslator.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelFactory.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/service/OverlayWindowHost.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt`
+- `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayControls.kt`
+- `app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt`
+- Likely add `app/src/test/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngineTest.kt` *(new if a pure unit-test seam is extracted)*
+
+### Ordered tasks
+| # | Task | Owner | Depends on | Repo refs | Acceptance check |
+|---|---|---|---|---|---|
+| 1 | Lock the production behavior change: Stockfish remains the only production recommender, no heuristic fallback is allowed, and engine failures must surface distinctly from `No move`. | planner/reviewer | brief + current code | `docs/chess-overlay-assistant/brief.md`, `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngine.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt` | The plan/status/docs explicitly state that heuristic fallback is removed from production recommendation flow. |
+| 2 | Refactor the Stockfish engine lifecycle to reuse a persistent UCI process across requests, with clean setup, synchronization, and teardown. | android-dev | 1 | `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngine.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishAssetInstaller.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/engine/MoveRecommendationEngine.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt` | Repeated recommendations for one overlay session reuse the same Stockfish process and still shut down cleanly when the owner is destroyed. |
+| 3 | Raise Stockfish analysis-strength defaults for stronger output while keeping request handling single-flight and UI-visible. | android-dev | 2 | `app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngine.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt` | The engine uses meaningfully stronger defaults than the old short per-request search, and loading remains visible until the result lands. |
+| 4 | Surface engine failures clearly in overlay state and compact UI without regressing the existing ready/loading/apply recommendation flow. | android-dev | 1,2,3 | `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt`, `app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayControls.kt` | Users see an explicit engine failure status/message instead of a misleading heuristic move or generic `No move`. |
+| 5 | Add focused regression coverage for failure surfacing and persistent-session state flow, then run reviewer → tester handoff on the new engine contract. | android-dev/reviewer/tester | 2,3,4 | `app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt`, `app/src/test/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngineTest.kt` *(if added)*, `docs/chess-overlay-assistant/review-inputs.md`, `docs/chess-overlay-assistant/status.md` | Tests prove engine exceptions surface in UI state, review confirms no hidden fallback remains, and testing gets a small manual checklist for repeated recommend requests + engine failure surfacing. |
+
+### Decisions locked for this slice
+- **D24 resolved (2026-03-19)**: Production recommendation flow must not fall back to `LocalHeuristicMoveRecommendationEngine`; if Stockfish fails, the overlay should surface the failure.
+- **D25 resolved (2026-03-19)**: Persistent process reuse is required for this pass because stronger search settings on a spawn-per-request engine would increase latency without delivering the intended quality win.
+- **D26 resolved (2026-03-19)**: Keep legality authority unchanged—Stockfish suggestions still pass through `StockfishMoveTranslator.legalMoveFromUci(...)` before preview/apply.
+- **D27 open**: Choose the exact user-facing compact error copy (`Engine error`, `Engine unavailable`, or a similarly short label) once the overlay state shape is finalized.
+
+### Reviewer focus
+- Verify that `StockfishMoveRecommendationEngine` no longer instantiates a heuristic fallback in production flow.
+- Verify that the engine process is actually reused across calls and closed when the owner is destroyed.
+- Verify that the overlay can now distinguish engine failure from `No move` / terminal-position gating.
+
+### Next reader
+- Start in `StockfishMoveRecommendationEngine.kt`, then thread the resulting explicit failure state through `OverlayBoardViewModel.kt` and `OverlayBoardUiState.kt`. Do not broaden the change into a larger engine abstraction rewrite unless the persistent-session implementation proves impossible inside the current file boundaries.

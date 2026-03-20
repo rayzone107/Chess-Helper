@@ -1,15 +1,16 @@
 ---
-kind: agent
-name: orchestrator
-purpose: Choose the lightest route, keep docs current, and hand off work with strict scope.
+name: "Orchestrator"
+purpose: "Choose the lightest route, keep docs current, and hand off work with strict scope."
 tools:
-  - list_dir
-  - read_file
-  - file_search
-  - grep_search
-  - semantic_search
-  - create_file
-  - apply_patch
+  [
+    "list_dir",
+    "read_file",
+    "file_search",
+    "grep_search",
+    "semantic_search",
+    "create_file",
+    "apply_patch",
+  ]
 reads:
   required:
     - .github/skills/repo-context.skill.md

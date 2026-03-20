@@ -1,16 +1,17 @@
 ---
-kind: agent
-name: reviewer
-purpose: Review changed code for clarity, structure, and architectural fit.
+name: "Reviewer"
+description: "Review changed code for clarity, structure, and architectural fit."
 tools:
-  - read_file
-  - file_search
-  - grep_search
-  - semantic_search
-  - create_file
-  - apply_patch
-  - run_in_terminal
-  - get_errors
+  [
+    "read_file",
+    "file_search",
+    "grep_search",
+    "semantic_search",
+    "create_file",
+    "apply_patch",
+    "run_in_terminal",
+    "get_errors"
+  ]
 reads:
   required:
     - .github/skills/repo-context.skill.md

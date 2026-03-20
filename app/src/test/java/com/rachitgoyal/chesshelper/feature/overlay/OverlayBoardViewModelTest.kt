@@ -1,8 +1,15 @@
 package com.rachitgoyal.chesshelper.feature.overlay
 
+import com.rachitgoyal.chesshelper.domain.chess.ChessGameStore
 import com.rachitgoyal.chesshelper.domain.chess.ChessRules
+import com.rachitgoyal.chesshelper.domain.chess.model.ChessPosition
+import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
+import com.rachitgoyal.chesshelper.domain.chess.model.Piece
+import com.rachitgoyal.chesshelper.domain.chess.model.PieceType
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
+import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
+import com.rachitgoyal.chesshelper.engine.local.LocalHeuristicMoveRecommendationEngine
 import com.rachitgoyal.chesshelper.engine.model.EngineRecommendation
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
@@ -16,7 +23,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun recommendationBecomesAvailableAfterOpponentMoveForBlackPlayer() {
-        val viewModel = OverlayBoardViewModel()
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
 
         assertFalse(viewModel.uiState.canRecommend)
 
@@ -29,7 +36,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun recommendationIsAvailableImmediatelyWhenPlayingWhite() {
-        val viewModel = OverlayBoardViewModel()
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
 
         viewModel.onAssistedSideChanged(Side.WHITE)
 
@@ -59,7 +66,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun requestingRecommendationPopulatesSummaryAndMarksItStaleAfterNextMove() {
-        val viewModel = OverlayBoardViewModel()
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
 
         viewModel.onSquareTapped("e2")
         viewModel.onSquareTapped("e4")
@@ -79,7 +86,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun undoClearsRecommendationAndResetsToIdle() {
-        val viewModel = OverlayBoardViewModel()
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
 
         viewModel.onSquareTapped("e2")
         viewModel.onSquareTapped("e4")
@@ -95,7 +102,7 @@ class OverlayBoardViewModelTest {
 
     @Test
     fun applyingRecommendationMakesTheMoveAndClearsPreview() {
-        val viewModel = OverlayBoardViewModel()
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine())
 
         viewModel.onAssistedSideChanged(Side.WHITE)
         viewModel.onRecommendClicked()
@@ -186,6 +193,106 @@ class OverlayBoardViewModelTest {
         assertTrue(viewModel.uiState.lastMove != null)
     }
 
+    @Test
+    fun checkStatePropagatesCheckedKingSquareToUiState() {
+        val viewModel = OverlayBoardViewModel(
+            store = ChessGameStore(
+                initialPosition = position(
+                    sideToMove = Side.WHITE,
+                    "e1" to king(Side.WHITE),
+                    "e8" to rook(Side.BLACK),
+                    "a8" to king(Side.BLACK),
+                ),
+            ),
+            moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine(),
+        )
+
+        viewModel.onAssistedSideChanged(Side.WHITE)
+
+        assertEquals(GameStatus.CHECK, viewModel.uiState.gameStatus)
+        assertEquals("e1", viewModel.uiState.checkedKingSquare)
+        assertEquals("Check", viewModel.uiState.compactStatusText)
+        assertTrue(viewModel.uiState.canRecommend)
+    }
+
+    @Test
+    fun checkmateDisablesRecommendationAndShowsCompactStatus() {
+        val viewModel = OverlayBoardViewModel(
+            store = ChessGameStore(
+                initialPosition = position(
+                    sideToMove = Side.BLACK,
+                    "h8" to king(Side.BLACK),
+                    "g7" to queen(Side.WHITE),
+                    "f6" to king(Side.WHITE),
+                ),
+            ),
+            moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine(),
+        )
+
+        assertEquals(GameStatus.CHECKMATE, viewModel.uiState.gameStatus)
+        assertEquals("h8", viewModel.uiState.checkedKingSquare)
+        assertEquals("Checkmate", viewModel.uiState.compactStatusText)
+        assertFalse(viewModel.uiState.canRecommend)
+    }
+
+    @Test
+    fun stalemateShowsExplicitStatusAndBlocksRecommendation() {
+        val viewModel = OverlayBoardViewModel(
+            store = ChessGameStore(
+                initialPosition = position(
+                    sideToMove = Side.BLACK,
+                    "h8" to king(Side.BLACK),
+                    "g6" to queen(Side.WHITE),
+                    "f7" to king(Side.WHITE),
+                ),
+            ),
+            moveRecommendationEngine = LocalHeuristicMoveRecommendationEngine(),
+        )
+
+        viewModel.onAssistedSideChanged(Side.BLACK)
+
+        assertEquals(GameStatus.STALEMATE, viewModel.uiState.gameStatus)
+        assertNull(viewModel.uiState.checkedKingSquare)
+        assertEquals("Stalemate", viewModel.uiState.compactStatusText)
+        assertFalse(viewModel.uiState.canRecommend)
+    }
+
+    @Test
+    fun engineFailureSurfacesExplicitErrorStatusAndDetail() {
+        val engine = MoveRecommendationEngine { _, _ ->
+            throw EngineUnavailableException("Stockfish stopped responding. Try again.")
+        }
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = engine)
+
+        viewModel.onAssistedSideChanged(Side.WHITE)
+        viewModel.onRecommendClicked()
+        awaitRecommendation(viewModel)
+
+        assertEquals(RecommendationState.ERROR, viewModel.uiState.recommendationState)
+        assertEquals("Engine error", viewModel.uiState.recommendationStatusLabel)
+        assertEquals("Engine error", viewModel.uiState.compactStatusText)
+        assertEquals("Stockfish stopped responding. Try again.", viewModel.uiState.recommendationBannerText)
+        assertTrue(viewModel.uiState.isRecommendationBannerError)
+        assertNull(viewModel.uiState.recommendation)
+        assertTrue(viewModel.uiState.canRecommend)
+    }
+
+    @Test
+    fun nullRecommendationUsesNoMoveStatusInsteadOfEngineError() {
+        val engine = MoveRecommendationEngine { _, _ -> null }
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = engine)
+
+        viewModel.onAssistedSideChanged(Side.WHITE)
+        viewModel.onRecommendClicked()
+        awaitRecommendation(viewModel)
+
+        assertEquals(RecommendationState.ERROR, viewModel.uiState.recommendationState)
+        assertEquals("No move", viewModel.uiState.recommendationStatusLabel)
+        assertEquals("No move", viewModel.uiState.compactStatusText)
+        assertEquals("No legal recommendation available for this position.", viewModel.uiState.recommendationBannerText)
+        assertFalse(viewModel.uiState.isRecommendationBannerError)
+    }
+
     private fun awaitRecommendation(viewModel: OverlayBoardViewModel) {
         repeat(40) {
             if (viewModel.uiState.recommendationState != RecommendationState.LOADING) {
@@ -195,5 +302,18 @@ class OverlayBoardViewModelTest {
         }
         throw AssertionError("Recommendation did not finish loading in time")
     }
+
+    private fun position(sideToMove: Side, vararg pieces: Pair<String, Piece>): ChessPosition {
+        return ChessPosition(
+            board = linkedMapOf(*pieces),
+            sideToMove = sideToMove,
+        )
+    }
+
+    private fun king(side: Side) = Piece(side, PieceType.KING)
+
+    private fun queen(side: Side) = Piece(side, PieceType.QUEEN)
+
+    private fun rook(side: Side) = Piece(side, PieceType.ROOK)
 }
 

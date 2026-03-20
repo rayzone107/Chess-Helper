@@ -1,18 +1,19 @@
 ---
-kind: agent
-name: coder
-purpose: Implement the smallest complete code change from plan, design, or review input.
-tools:
-  - list_dir
-  - read_file
-  - file_search
-  - grep_search
-  - semantic_search
-  - create_file
-  - apply_patch
-  - insert_edit_into_file
-  - run_in_terminal
-  - get_errors
+name: "Coder"
+purpose: "Implement the smallest complete code change from plan, design, or review input."
+tools: 
+  [
+    "list_dir",
+    "read_file",
+    "file_search",
+    "grep_search",
+    "semantic_search",
+    "create_file",
+    "apply_patch",
+    "insert_edit_into_file",
+    "run_in_terminal",
+    "get_errors"
+  ]
 reads:
   required:
     - .github/skills/repo-context.skill.md

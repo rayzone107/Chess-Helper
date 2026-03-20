@@ -2,6 +2,7 @@ package com.rachitgoyal.chesshelper.domain.chess
 
 import com.rachitgoyal.chesshelper.domain.chess.model.CastlingRights
 import com.rachitgoyal.chesshelper.domain.chess.model.ChessPosition
+import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.PieceType
@@ -103,13 +104,33 @@ object ChessRules {
     }
 
     fun isKingInCheck(position: ChessPosition, side: Side): Boolean {
-        val kingSquare = position.board.entries.firstOrNull { (_, piece) ->
-            piece.side == side && piece.type == PieceType.KING
-        }?.key ?: return false
+        val kingSquare = kingSquare(position, side) ?: return false
         return isSquareAttacked(position, kingSquare, side.opposite())
     }
 
-    fun isGameOver(position: ChessPosition): Boolean = legalMoves(position).isEmpty()
+    fun kingSquare(position: ChessPosition, side: Side): String? {
+        return position.board.entries.firstOrNull { (_, piece) ->
+            piece.side == side && piece.type == PieceType.KING
+        }?.key
+    }
+
+    fun checkedKingSquare(position: ChessPosition): String? {
+        val sideToMove = position.sideToMove
+        return kingSquare(position, sideToMove)?.takeIf { isSquareAttacked(position, it, sideToMove.opposite()) }
+    }
+
+    fun gameStatus(position: ChessPosition): GameStatus {
+        val hasLegalMoves = legalMoves(position).isNotEmpty()
+        val inCheck = checkedKingSquare(position) != null
+        return when {
+            hasLegalMoves && inCheck -> GameStatus.CHECK
+            hasLegalMoves -> GameStatus.NORMAL
+            inCheck -> GameStatus.CHECKMATE
+            else -> GameStatus.STALEMATE
+        }
+    }
+
+    fun isGameOver(position: ChessPosition): Boolean = gameStatus(position).isTerminal
 
     private fun generatePseudoLegalMoves(
         position: ChessPosition,

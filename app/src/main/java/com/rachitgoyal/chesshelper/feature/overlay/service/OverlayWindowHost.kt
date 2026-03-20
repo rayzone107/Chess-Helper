@@ -5,9 +5,7 @@ import android.graphics.Rect
 import android.graphics.PixelFormat
 import android.view.ContextThemeWrapper
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -77,6 +75,7 @@ class OverlayWindowHost(
         overlayLayoutParams = null
         composeViewOwner?.onDestroy()
         composeViewOwner = null
+        overlayViewModel.dispose()
         OverlayWindowServiceState.isRunning = false
     }
 

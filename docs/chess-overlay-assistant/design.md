@@ -10,7 +10,7 @@ code_refs:
   - app/src/main/java/com/rachitgoyal/chesshelper/MainActivity.kt
   - app/src/main/AndroidManifest.xml
   - app/build.gradle.kts
-last_updated: 2026-03-18
+last_updated: 2026-03-19
 ---
 
 # Chess Overlay Assistant MVP Design
@@ -314,3 +314,63 @@ Behavior:
 3. Update `ChessBoard.kt` to draw one recommendation arrow in display-space coordinates while preserving existing selection/legal-target/last-move feedback.
 4. Update `OverlayBoardViewModel.kt` / `OverlayBoardUiState.kt` so async recommendation loading, stale handling, and arrow visibility match the compact UI contract.
 
+
+
+## Design update v2026-03-19.1
+
+### Scope lock
+- This delta does **not** redesign the board or move-entry UX.
+- Keep the existing compact overlay chrome, current best-move arrow/apply flow, and current legality boundary.
+- Change only the engine-lifecycle and recommendation-status contract needed to support stronger Stockfish output with explicit error surfacing.
+
+### Persistent engine session contract
+- `StockfishMoveRecommendationEngine` owns one reusable UCI process for its lifetime.
+- Session lifecycle:
+  1. install binary if needed
+  2. start process once
+  3. perform `uci` / option setup / `isready` once
+  4. reuse the process for later `position fen ...` + `go ...` requests
+  5. close the process when the owning `OverlayBoardViewModel` is cleared or the overlay host is torn down
+- The session must be **single-flight/synchronized** so overlapping requests cannot interleave UCI commands on the same process.
+- Any handshake, timeout, parse, or process-death failure invalidates the session and surfaces an explicit error back to the view-model.
+
+### Stronger analysis defaults
+- Favor stronger output over speed for this pass.
+- Minimum design intent for defaults:
+  - longer analysis time than the current short search
+  - larger hash size than the current small default
+  - explicit analysis-oriented UCI options where supported
+- Keep exactly one PV/result surfaced in the UI; no multi-line analysis panel is added.
+
+### Recommendation status contract update
+- Keep the existing top-level states in `OverlayBoardUiState`, but distinguish two user-facing non-success outcomes:
+  - **No move**: there is genuinely no legal recommendation to show for the requested position
+  - **Engine failure**: Stockfish could not start/respond/return a valid move
+- The UI must not reuse `No move` text for engine failures.
+
+### Compact overlay copy rules
+- Minimized/compact status may use a short label such as:
+  - `Analyzing…`
+  - `Best: <notation>`
+  - `Best: <notation> • stale`
+  - `Engine error`
+  - `No move`
+  - `Check`, `Checkmate`, `Stalemate` variants as already defined
+- Expanded banner/detail treatment:
+  - if ready: may continue showing compact status or recommendation summary
+  - if engine failure: show a short explicit failure message derived from the surfaced engine error, not a heuristic fallback summary
+
+### Overlay behavior rules for engine failure
+- A failed recommendation request must:
+  - clear loading
+  - leave move entry, undo, and side switching available
+  - clear any active recommendation preview/apply CTA
+  - preserve current board state
+- A later recommend tap may retry the engine and can recreate the persistent session if the prior one was discarded.
+
+### Implementation entry points for this delta
+- `engine/stockfish/StockfishMoveRecommendationEngine.kt`
+- `feature/overlay/OverlayBoardViewModel.kt`
+- `feature/overlay/OverlayBoardUiState.kt`
+- `feature/overlay/components/OverlayPanel.kt`
+- `feature/overlay/components/OverlayControls.kt`

@@ -2,6 +2,7 @@ package com.rachitgoyal.chesshelper.feature.overlay
 
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
@@ -30,13 +31,18 @@ data class OverlayBoardUiState(
     val lastMove: MoveRecord? = null,
     val sideToMove: Side = Side.WHITE,
     val moveHistory: List<MoveRecord> = emptyList(),
+    val gameStatus: GameStatus = GameStatus.NORMAL,
+    val checkedKingSquare: String? = null,
     val assistedSide: Side = Side.BLACK,
     val recommendationState: RecommendationState = RecommendationState.IDLE,
     val recommendation: EngineRecommendation? = null,
     val isRecommendationStale: Boolean = false,
+    val recommendationStatusLabel: String? = null,
     val recommendationError: String? = null,
-    val isGameOver: Boolean = false,
 ) {
+    val isGameOver: Boolean
+        get() = gameStatus.isTerminal
+
     val canUndo: Boolean
         get() = moveHistory.isNotEmpty()
 
@@ -61,15 +67,41 @@ data class OverlayBoardUiState(
     val canApplyRecommendation: Boolean
         get() = panelMode == PanelMode.EXPANDED && activeRecommendedMove != null && sideToMove == assistedSide
 
-    val compactRecommendationStatus: String
+    val recommendationBannerText: String
         get() {
             val activeMove = activeRecommendedMove
+            val recommendationSummary = recommendation?.summary
             return when {
+                recommendationState == RecommendationState.ERROR && recommendationError != null -> recommendationError
+                activeMove != null && recommendationSummary != null -> recommendationSummary
+                gameStatus == GameStatus.CHECKMATE -> "Checkmate"
+                gameStatus == GameStatus.STALEMATE -> "Stalemate"
+                gameStatus == GameStatus.CHECK -> "Check"
                 recommendationState == RecommendationState.LOADING -> "Analyzing…"
+                else -> compactStatusText
+            }
+        }
+
+    val isRecommendationBannerError: Boolean
+        get() = recommendationState == RecommendationState.ERROR && recommendationStatusLabel == "Engine error"
+
+    val compactStatusText: String
+        get() {
+            val activeMove = activeRecommendedMove
+            val statusLabel = recommendationStatusLabel
+            return when {
+                gameStatus == GameStatus.CHECKMATE -> "Checkmate"
+                gameStatus == GameStatus.STALEMATE -> "Stalemate"
+                gameStatus == GameStatus.CHECK && recommendationState == RecommendationState.LOADING -> "Check • Analyzing…"
+                gameStatus == GameStatus.CHECK && activeMove != null -> "Check • Best: ${activeMove.notation}"
+                gameStatus == GameStatus.CHECK && recommendation != null && isRecommendationStale -> "Check • Best: ${recommendation.move.notation} • stale"
+                gameStatus == GameStatus.CHECK && statusLabel != null -> "Check • $statusLabel"
+                gameStatus == GameStatus.CHECK -> "Check"
+                recommendationState == RecommendationState.LOADING -> "Analyzing…"
+                statusLabel != null -> statusLabel
                 recommendationError != null -> "No move"
                 activeMove != null -> "Best: ${activeMove.notation}"
                 recommendation != null && isRecommendationStale -> "Best: ${recommendation.move.notation} • stale"
-                isGameOver -> "Game over"
                 else -> "Ready"
             }
         }

@@ -1,15 +1,16 @@
 ---
-kind: agent
-name: planner
-purpose: Turn a request into a scoped execution plan with exact file refs and handoffs.
+name: "Planner"
+purpose: "Turn a request into a scoped execution plan with exact file refs and handoffs."
 tools:
-  - list_dir
-  - read_file
-  - file_search
-  - grep_search
-  - semantic_search
-  - create_file
-  - apply_patch
+  [
+    "list_dir",
+    "read_file",
+    "file_search",
+    "grep_search",
+    "semantic_search",
+    "create_file",
+    "apply_patch"
+  ]
 reads:
   required:
     - .github/skills/repo-context.skill.md

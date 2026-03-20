@@ -1,14 +1,15 @@
 ---
-kind: agent
-name: designer
-purpose: Convert plan intent into explicit UI, interaction, and state guidance.
+name: "Designer"
+purpose: "Convert plan intent into explicit UI, interaction, and state guidance."
 tools:
-  - read_file
-  - file_search
-  - grep_search
-  - semantic_search
-  - create_file
-  - apply_patch
+  [
+    "read_file",
+    "file_search",
+    "grep_search",
+    "semantic_search",
+    "create_file",
+    "apply_patch"
+  ]
 reads:
   required:
     - .github/skills/docs-contract.skill.md

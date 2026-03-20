@@ -12,8 +12,8 @@ import androidx.lifecycle.ViewModel
 import com.rachitgoyal.chesshelper.domain.chess.ChessGameStore
 import com.rachitgoyal.chesshelper.domain.chess.model.GameSnapshot
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
+import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
-import com.rachitgoyal.chesshelper.engine.local.LocalHeuristicMoveRecommendationEngine
 import com.rachitgoyal.chesshelper.engine.model.EngineRecommendation
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 
 class OverlayBoardViewModel(
     private val store: ChessGameStore = ChessGameStore(),
-    private val moveRecommendationEngine: MoveRecommendationEngine = LocalHeuristicMoveRecommendationEngine(),
+    private val moveRecommendationEngine: MoveRecommendationEngine,
     private val recommendationExecutor: ExecutorService = Executors.newSingleThreadExecutor(),
     private val uiExecutor: Executor = defaultUiExecutor(),
 ) : ViewModel() {
@@ -32,6 +32,7 @@ class OverlayBoardViewModel(
 
     private var panelSizePx: IntSize = IntSize.Zero
     private var recommendationRequestVersion: Int = 0
+    private var isDisposed: Boolean = false
 
     init {
         syncFromStore()
@@ -93,6 +94,7 @@ class OverlayBoardViewModel(
                 else -> uiState.recommendationState
             },
             isRecommendationStale = staleRecommendation,
+            recommendationStatusLabel = null,
             recommendationError = null,
         )
     }
@@ -104,6 +106,7 @@ class OverlayBoardViewModel(
             recommendationRequestVersion += 1
             uiState = uiState.copy(
                 recommendationState = RecommendationState.ERROR,
+                recommendationStatusLabel = "Suggestion stale",
                 recommendationError = "The suggested move is no longer legal in the current position.",
                 isRecommendationStale = true,
             )
@@ -114,6 +117,7 @@ class OverlayBoardViewModel(
             recommendation = null,
             recommendationState = RecommendationState.IDLE,
             isRecommendationStale = false,
+            recommendationStatusLabel = null,
             recommendationError = null,
         )
     }
@@ -125,6 +129,7 @@ class OverlayBoardViewModel(
             recommendation = null,
             recommendationState = RecommendationState.IDLE,
             isRecommendationStale = false,
+            recommendationStatusLabel = null,
             recommendationError = null,
         )
     }
@@ -136,6 +141,7 @@ class OverlayBoardViewModel(
             recommendation = null,
             recommendationState = RecommendationState.IDLE,
             isRecommendationStale = false,
+            recommendationStatusLabel = null,
             recommendationError = null,
         )
     }
@@ -147,6 +153,7 @@ class OverlayBoardViewModel(
             recommendation = null,
             recommendationState = RecommendationState.IDLE,
             isRecommendationStale = false,
+            recommendationStatusLabel = null,
             recommendationError = null,
         )
     }
@@ -162,11 +169,24 @@ class OverlayBoardViewModel(
             recommendationState = RecommendationState.LOADING,
             recommendation = null,
             isRecommendationStale = false,
+            recommendationStatusLabel = null,
             recommendationError = null,
         )
 
         recommendationExecutor.execute {
-            val recommendation = moveRecommendationEngine.recommend(requestedPosition, requestedSide)
+            val result = try {
+                RecommendationRequestResult.Success(
+                    recommendation = moveRecommendationEngine.recommend(requestedPosition, requestedSide),
+                )
+            } catch (exception: EngineUnavailableException) {
+                RecommendationRequestResult.EngineFailure(
+                    message = exception.message ?: "Stockfish failed to analyze this position. Try again.",
+                )
+            } catch (_: Exception) {
+                RecommendationRequestResult.EngineFailure(
+                    message = "Stockfish failed to analyze this position. Try again.",
+                )
+            }
 
             uiExecutor.execute {
                 if (
@@ -177,34 +197,58 @@ class OverlayBoardViewModel(
                     return@execute
                 }
 
-                uiState = if (recommendation != null) {
-                    uiState.copy(
-                        recommendationState = RecommendationState.READY,
-                        recommendation = recommendation,
-                        isRecommendationStale = false,
-                        recommendationError = null,
-                    )
-                } else {
-                    uiState.copy(
-                        recommendationState = RecommendationState.ERROR,
-                        recommendation = null,
-                        isRecommendationStale = false,
-                        recommendationError = "No legal recommendation available for this position.",
-                    )
+                uiState = when (result) {
+                    is RecommendationRequestResult.Success -> {
+                        if (result.recommendation != null) {
+                            uiState.copy(
+                                recommendationState = RecommendationState.READY,
+                                recommendation = result.recommendation,
+                                isRecommendationStale = false,
+                                recommendationStatusLabel = null,
+                                recommendationError = null,
+                            )
+                        } else {
+                            uiState.copy(
+                                recommendationState = RecommendationState.ERROR,
+                                recommendation = null,
+                                isRecommendationStale = false,
+                                recommendationStatusLabel = "No move",
+                                recommendationError = "No legal recommendation available for this position.",
+                            )
+                        }
+                    }
+
+                    is RecommendationRequestResult.EngineFailure -> {
+                        uiState.copy(
+                            recommendationState = RecommendationState.ERROR,
+                            recommendation = null,
+                            isRecommendationStale = false,
+                            recommendationStatusLabel = "Engine error",
+                            recommendationError = result.message,
+                        )
+                    }
                 }
             }
         }
     }
 
     override fun onCleared() {
-        recommendationExecutor.shutdownNow()
+        dispose()
         super.onCleared()
+    }
+
+    fun dispose() {
+        if (isDisposed) return
+        isDisposed = true
+        recommendationExecutor.shutdownNow()
+        runCatching { (moveRecommendationEngine as? AutoCloseable)?.close() }
     }
 
     private fun syncFromStore(
         recommendation: EngineRecommendation? = uiState.recommendation,
         recommendationState: RecommendationState = uiState.recommendationState,
         isRecommendationStale: Boolean = uiState.isRecommendationStale,
+        recommendationStatusLabel: String? = uiState.recommendationStatusLabel,
         recommendationError: String? = uiState.recommendationError,
     ) {
         val snapshot: GameSnapshot = store.snapshot()
@@ -215,11 +259,13 @@ class OverlayBoardViewModel(
             lastMove = snapshot.lastMove,
             sideToMove = snapshot.sideToMove,
             moveHistory = snapshot.moveHistory,
+            gameStatus = snapshot.gameStatus,
+            checkedKingSquare = snapshot.checkedKingSquare,
             recommendation = recommendation,
             recommendationState = recommendationState,
             isRecommendationStale = isRecommendationStale,
+            recommendationStatusLabel = recommendationStatusLabel,
             recommendationError = recommendationError,
-            isGameOver = snapshot.isGameOver,
         )
     }
 
@@ -250,6 +296,12 @@ class OverlayBoardViewModel(
             }
         }
     }
+}
+
+private sealed interface RecommendationRequestResult {
+    data class Success(val recommendation: EngineRecommendation?) : RecommendationRequestResult
+
+    data class EngineFailure(val message: String) : RecommendationRequestResult
 }
 
 

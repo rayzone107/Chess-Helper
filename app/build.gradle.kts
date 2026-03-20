@@ -37,6 +37,15 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Force Android to extract jniLibs to the device filesystem at install time.
+    // This lets us locate and execute libstockfish.so via applicationInfo.nativeLibraryDir
+    // without any AssetManager or GZIP/AAPT involvement.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 dependencies {

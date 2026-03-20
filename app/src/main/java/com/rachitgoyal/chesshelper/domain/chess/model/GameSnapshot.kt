@@ -6,12 +6,16 @@ data class GameSnapshot(
     val legalTargets: Set<String>,
     val lastMove: MoveRecord?,
     val moveHistory: List<MoveRecord>,
-    val isGameOver: Boolean,
+    val gameStatus: GameStatus,
+    val checkedKingSquare: String?,
 ) {
     val board: Map<String, Piece>
         get() = position.board
 
     val sideToMove: Side
         get() = position.sideToMove
+
+    val isGameOver: Boolean
+        get() = gameStatus.isTerminal
 }
 

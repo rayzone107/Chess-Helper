@@ -119,7 +119,7 @@ fun OverlayWindowCard(
                     color = Color.White,
                 )
                 Text(
-                    text = uiState.compactRecommendationStatus,
+                    text = uiState.compactStatusText,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF94A3B8),
                 )
@@ -150,7 +150,7 @@ fun OverlayWindowCard(
                         )
                     }
                     Text(
-                        text = uiState.compactRecommendationStatus,
+                        text = uiState.compactStatusText,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF94A3B8),
@@ -168,6 +168,7 @@ fun OverlayWindowCard(
                     selectedSquare = uiState.selectedSquare,
                     legalTargets = uiState.legalTargets,
                     lastMove = uiState.lastMove,
+                    checkedKingSquare = uiState.checkedKingSquare,
                     recommendedMove = uiState.activeRecommendedMove,
                     bottomSide = uiState.boardBottomSide,
                     onSquareTapped = onSquareTapped,
@@ -193,14 +194,14 @@ fun OverlayWindowCard(
 @Composable
 private fun RecommendationBanner(uiState: OverlayBoardUiState) {
     Surface(
-        color = Color(0xFF111827),
+        color = if (uiState.isRecommendationBannerError) Color(0xFF3F1D1D) else Color(0xFF111827),
         shape = RoundedCornerShape(14.dp),
     ) {
         Text(
-            text = uiState.compactRecommendationStatus,
+            text = uiState.recommendationBannerText,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFFE2E8F0),
+            color = if (uiState.isRecommendationBannerError) Color(0xFFFCA5A5) else Color(0xFFE2E8F0),
         )
     }
 }
