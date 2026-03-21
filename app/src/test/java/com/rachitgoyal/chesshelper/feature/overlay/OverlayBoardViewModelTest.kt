@@ -311,6 +311,43 @@ class OverlayBoardViewModelTest {
         throw AssertionError("Recommendation did not finish loading in time")
     }
 
+    @Test
+    fun moveHistoryGrowsAfterEachMove() {
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
+
+        assertEquals(0, viewModel.uiState.moveHistory.size)
+
+        viewModel.onSquareTapped("e2")
+        viewModel.onSquareTapped("e4")
+        assertEquals(1, viewModel.uiState.moveHistory.size)
+        assertEquals("e2", viewModel.uiState.moveHistory[0].from)
+        assertEquals("e4", viewModel.uiState.moveHistory[0].to)
+
+        viewModel.onSquareTapped("e7")
+        viewModel.onSquareTapped("e5")
+        assertEquals(2, viewModel.uiState.moveHistory.size)
+
+        viewModel.onSquareTapped("d2")
+        viewModel.onSquareTapped("d4")
+        assertEquals(3, viewModel.uiState.moveHistory.size)
+    }
+
+    @Test
+    fun moveHistoryResetsOnGameReset() {
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
+
+        viewModel.onSquareTapped("e2")
+        viewModel.onSquareTapped("e4")
+        viewModel.onSquareTapped("e7")
+        viewModel.onSquareTapped("e5")
+        assertEquals(2, viewModel.uiState.moveHistory.size)
+
+        viewModel.onResetBoard()
+
+        assertEquals(0, viewModel.uiState.moveHistory.size)
+        assertNull(viewModel.uiState.lastMove)
+    }
+
     private fun position(sideToMove: Side, vararg pieces: Pair<String, Piece>): ChessPosition {
         return ChessPosition(board = linkedMapOf(*pieces), sideToMove = sideToMove)
     }

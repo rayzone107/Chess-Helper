@@ -36,6 +36,9 @@ fun OverlayWindowContent(
         onResetBoard = viewModel::onResetBoard,
         onTogglePanelMode = viewModel::togglePanelMode,
         onAssistedSideChanged = viewModel::onAssistedSideChanged,
+        onCopyFenClicked = viewModel::onCopyFenClicked,
+        onFenCopyConsumed = viewModel::onFenCopyConsumed,
+        onHapticConsumed = viewModel::onHapticConsumed,
         dragHandleModifier = dragModifier,
         onCloseOverlay = onRequestClose,
     )

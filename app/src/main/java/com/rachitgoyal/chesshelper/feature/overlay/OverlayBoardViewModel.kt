@@ -11,10 +11,12 @@ import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import com.rachitgoyal.chesshelper.domain.chess.ChessGameStore
 import com.rachitgoyal.chesshelper.domain.chess.model.GameSnapshot
+import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
 import com.rachitgoyal.chesshelper.engine.model.EngineRecommendation
+import com.rachitgoyal.chesshelper.engine.stockfish.ChessPositionFenEncoder
 import com.rachitgoyal.chesshelper.settings.AppSettings
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
@@ -38,7 +40,10 @@ class OverlayBoardViewModel(
 
     init {
         syncFromStore()
-        uiState = uiState.copy(autoApplyBestMove = appSettings?.autoApplyBestMove ?: false)
+        uiState = uiState.copy(
+            autoApplyBestMove = appSettings?.autoApplyBestMove ?: false,
+            enableHapticFeedback = appSettings?.enableHapticFeedback ?: true,
+        )
     }
 
     fun onRootBoundsChanged(size: IntSize) {
@@ -100,6 +105,9 @@ class OverlayBoardViewModel(
             recommendationStatusLabel = null,
             recommendationError = null,
         )
+        if (moveMade && uiState.enableHapticFeedback) {
+            uiState = uiState.copy(hapticEvent = hapticEventForCurrentState())
+        }
     }
 
     fun onApplyRecommendationClicked() {
@@ -123,6 +131,27 @@ class OverlayBoardViewModel(
             recommendationStatusLabel = null,
             recommendationError = null,
         )
+        if (uiState.enableHapticFeedback) {
+            uiState = uiState.copy(hapticEvent = hapticEventForCurrentState())
+        }
+    }
+
+    fun onCopyFenClicked() {
+        uiState = uiState.copy(fenCopied = true)
+    }
+
+    fun onFenCopyConsumed() {
+        uiState = uiState.copy(fenCopied = false)
+    }
+
+    fun onHapticConsumed() {
+        uiState = uiState.copy(hapticEvent = null)
+    }
+
+    private fun hapticEventForCurrentState(): BoardHapticEvent = when {
+        uiState.gameStatus == GameStatus.CHECK || uiState.gameStatus == GameStatus.CHECKMATE -> BoardHapticEvent.CHECK
+        uiState.lastMove?.capturedPiece != null -> BoardHapticEvent.CAPTURE
+        else -> BoardHapticEvent.MOVE
     }
 
     fun onUndoClicked() {
@@ -273,6 +302,7 @@ class OverlayBoardViewModel(
             moveHistory = snapshot.moveHistory,
             gameStatus = snapshot.gameStatus,
             checkedKingSquare = snapshot.checkedKingSquare,
+            currentFen = ChessPositionFenEncoder.encode(snapshot.position),
             recommendation = recommendation,
             recommendationState = recommendationState,
             isRecommendationStale = isRecommendationStale,

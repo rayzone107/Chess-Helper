@@ -19,9 +19,16 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_APPLY, true)
         set(value) { prefs.edit().putBoolean(KEY_AUTO_APPLY, value).apply() }
 
+    /**
+     * When true (default), the device vibrates briefly on legal moves in the overlay.
+     */
+    var enableHapticFeedback: Boolean
+        get() = prefs.getBoolean(KEY_HAPTIC, true)
+        set(value) { prefs.edit().putBoolean(KEY_HAPTIC, value).apply() }
+
     companion object {
         private const val PREFS_NAME = "chess_helper_settings"
         private const val KEY_AUTO_APPLY = "auto_apply_best_move"
+        private const val KEY_HAPTIC = "enable_haptic_feedback"
     }
 }
-

@@ -20,6 +20,9 @@ enum class RecommendationState {
     ERROR,
 }
 
+/** Haptic pulse type emitted after a legal move in the overlay. */
+enum class BoardHapticEvent { MOVE, CAPTURE, CHECK }
+
 data class OverlayBoardUiState(
     val panelMode: PanelMode = PanelMode.EXPANDED,
     val panelOffsetPx: IntOffset = IntOffset(32, 80),
@@ -41,6 +44,14 @@ data class OverlayBoardUiState(
     val recommendationError: String? = null,
     /** Mirrors [AppSettings.autoApplyBestMove]. Refreshed each time a recommendation is requested. */
     val autoApplyBestMove: Boolean = true,
+    /** Current position as a FEN string; refreshed after every move. */
+    val currentFen: String = "",
+    /** One-shot flag: set to true to trigger a FEN-copied confirmation in the UI. */
+    val fenCopied: Boolean = false,
+    /** Mirrors [AppSettings.enableHapticFeedback]. */
+    val enableHapticFeedback: Boolean = true,
+    /** One-shot haptic pulse emitted after a legal move; consumed by the UI layer. */
+    val hapticEvent: BoardHapticEvent? = null,
 ) {
     val isGameOver: Boolean
         get() = gameStatus.isTerminal
@@ -106,4 +117,3 @@ data class OverlayBoardUiState(
             }
         }
 }
-

@@ -34,6 +34,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
 ) {
     var autoApply by remember { mutableStateOf(appSettings.autoApplyBestMove) }
+    var hapticFeedback by remember { mutableStateOf(appSettings.enableHapticFeedback) }
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.statusBarsPadding()) {
@@ -99,6 +100,42 @@ fun SettingsScreen(
                             onCheckedChange = { checked ->
                                 autoApply = checked
                                 appSettings.autoApplyBestMove = checked
+                            },
+                        )
+                    }
+                }
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Haptic feedback",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.size(4.dp))
+                            Text(
+                                text = "Vibrates briefly on each move. Stronger pulse on captures and checks.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = hapticFeedback,
+                            onCheckedChange = { checked ->
+                                hapticFeedback = checked
+                                appSettings.enableHapticFeedback = checked
                             },
                         )
                     }

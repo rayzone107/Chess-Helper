@@ -27,6 +27,7 @@ fun OverlayControls(
     onUndoClicked: () -> Unit,
     onResetBoard: () -> Unit,
     onAssistedSideChanged: (Side) -> Unit,
+    onCopyFenClicked: () -> Unit,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -107,14 +108,24 @@ fun OverlayControls(
             }
         }
 
-        OutlinedButton(
-            onClick = onResetBoard,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 2.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("New game")
+            OutlinedButton(
+                onClick = onCopyFenClicked,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Copy FEN")
+            }
+            OutlinedButton(
+                onClick = onResetBoard,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 2.dp),
+            ) {
+                Text("New game")
+            }
         }
     }
 }
-

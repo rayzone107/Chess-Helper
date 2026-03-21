@@ -1,29 +1,22 @@
 ---
 feature: chess-overlay-assistant
-stage: testing-handoff
-status: ready-for-validation
+stage: planning-complete
+status: ready-for-implementation
 input_refs:
   - docs/chess-overlay-assistant/brief.md
-  - docs/chess-overlay-assistant/plan.md
-  - docs/chess-overlay-assistant/design.md
-  - docs/chess-overlay-assistant/review-inputs.md
-  - .github/prompts/enhancement.prompt.md
+  - docs/chess-overlay-assistant/plan-v3.md
 code_refs:
-  - app/src/main/java/com/rachitgoyal/chesshelper/engine/MoveRecommendationEngine.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/engine/EngineUnavailableException.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishAssetInstaller.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveRecommendationEngine.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/engine/stockfish/StockfishMoveTranslator.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt
+  - app/src/main/java/com/rachitgoyal/chesshelper/settings/AppSettings.kt
   - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModel.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelFactory.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/service/OverlayWindowHost.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt
-  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayControls.kt
+  - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt
+  - app/src/main/java/com/rachitgoyal/chesshelper/feature/settings/SettingsScreen.kt
   - app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt
 last_updated: 2026-03-19
 ---
-- active_owner: tester
+- active_owner: coder
+- current_state: Plan v3 (streamlined workflow) complete and ready for implementation. No code changes yet in this pass.
+- next_reader: coder
+- next_step: implement T1–T7 per docs/chess-overlay-assistant/plan-v3.md
 - current_state: `Plan v2026-03-19.1` is implemented and automated validation is now complete. Production recommendation flow uses a persistent reusable Stockfish session with stronger defaults (`movetime 5000`, `Hash 128`, up to 4 threads), the heuristic fallback path is removed from production wiring, activity/service owners explicitly dispose the recommendation stack, and the overlay distinguishes `Engine error` from `No move` while preserving legal-move validation and the existing preview/apply flow. The packaged Stockfish payload has now also been rebuilt as real Android PIE executables for both `arm64-v8a` and `x86_64`, and the installer selects the right asset per ABI while forcing replacement of previously installed broken binaries.
 - touched_docs:
   - `docs/chess-overlay-assistant/brief.md`
