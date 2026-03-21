@@ -84,6 +84,17 @@ class ChessGameStore(
         return true
     }
 
+    fun loadFen(fen: String): Result<Unit> {
+        val result = FenParser.parse(fen)
+        result.onSuccess { newPosition ->
+            position = newPosition
+            previousPositions.clear()
+            moveHistory.clear()
+            clearSelection()
+        }
+        return result.map { }
+    }
+
     private fun selectSquare(square: String) {
         selectedSquare = square
         legalTargets = ChessRules.legalMovesFrom(position, square).map { it.to }.toSet()
@@ -101,5 +112,3 @@ class ChessGameStore(
         clearSelection()
     }
 }
-
-

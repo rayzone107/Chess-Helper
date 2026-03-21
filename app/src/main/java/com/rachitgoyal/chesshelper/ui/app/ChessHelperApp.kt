@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -105,6 +107,12 @@ private fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 Text(
+                    text = "♟",
+                    fontSize = 72.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
                     text = "Chess Overlay Assistant",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -125,19 +133,23 @@ private fun HomeScreen(
                         modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Text(
-                            text = if (overlayPermissionGranted) "Overlay permission granted" else "Overlay permission required",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            text = if (overlayPermissionGranted) {
-                                "You can launch the floating chess board over YouTube, browsers, and other apps."
-                            } else {
-                                "Android requires special overlay access before the board can appear above other apps. Open settings, enable permission for Chess Helper, then return here."
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        if (overlayPermissionGranted) {
+                            AssistChip(
+                                onClick = {},
+                                label = { Text("✓ Overlay permission granted") },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    labelColor = Color(0xFF22C55E),
+                                ),
+                            )
+                        } else {
+                            AssistChip(
+                                onClick = onOpenOverlaySettings,
+                                label = { Text("✗ Overlay permission required") },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    labelColor = Color(0xFFEF4444),
+                                ),
+                            )
+                        }
                         Text(
                             text = if (overlayRunning) "Overlay status: active" else "Overlay status: stopped",
                             style = MaterialTheme.typography.labelLarge,

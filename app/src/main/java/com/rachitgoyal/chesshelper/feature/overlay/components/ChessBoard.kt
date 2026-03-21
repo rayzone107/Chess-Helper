@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
+import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
 
 @Composable
 fun ChessBoard(
@@ -41,6 +42,7 @@ fun ChessBoard(
     bottomSide: Side,
     onSquareTapped: (String) -> Unit,
     modifier: Modifier = Modifier,
+    boardTheme: BoardTheme = BoardTheme.CLASSIC,
 ) {
     val ranks = if (bottomSide == Side.WHITE) (7 downTo 0).toList() else (0..7).toList()
     val files = if (bottomSide == Side.WHITE) (0..7).toList() else (7 downTo 0).toList()
@@ -59,12 +61,13 @@ fun ChessBoard(
                         val squareId = "${('a'.code + file).toChar()}${rank + 1}"
                         val isSelected = selectedSquare == squareId
                         val isLastMove = squareId == lastMove?.from || squareId == lastMove?.to
-                        val baseColor = if ((file + rank) % 2 == 0) Color(0xFFE7D0AE) else Color(0xFF7C5331)
+                        val isLight = (file + rank) % 2 == 0
+                        val baseColor = if (isLight) boardTheme.lightSquareColor else boardTheme.darkSquareColor
                         val backgroundColor = when {
-                            isSelected -> Color(0xFF2563EB)
-                            squareId in legalTargets -> Color(0xFFB8E1FF)
-                            isLastMove -> Color(0xFFFACC15)
-                            else -> baseColor
+                            isSelected -> Color(0xDD2563EB)
+                            squareId in legalTargets -> Color(0xDDB8E1FF)
+                            isLastMove -> Color(0xDDFACC15)
+                            else -> baseColor.copy(alpha = 0.86f)
                         }
                         Box(
                             modifier = Modifier
@@ -188,4 +191,3 @@ private fun squareCenter(squareId: String, bottomSide: Side, boardSize: Float): 
         y = (displayRow + 0.5f) * cellSize,
     )
 }
-

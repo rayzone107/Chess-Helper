@@ -1,6 +1,7 @@
 package com.rachitgoyal.chesshelper.settings
 
 import android.content.Context
+import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
 
 /**
  * Persists user preferences for Chess Helper using SharedPreferences.
@@ -26,9 +27,19 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_HAPTIC, true)
         set(value) { prefs.edit().putBoolean(KEY_HAPTIC, value).apply() }
 
+    var boardTheme: BoardTheme
+        get() = BoardTheme.entries.getOrElse(prefs.getInt(KEY_BOARD_THEME, 0)) { BoardTheme.CLASSIC }
+        set(value) { prefs.edit().putInt(KEY_BOARD_THEME, value.ordinal).apply() }
+
+    var enableSoundEffects: Boolean
+        get() = prefs.getBoolean(KEY_SOUND, false)
+        set(value) { prefs.edit().putBoolean(KEY_SOUND, value).apply() }
+
     companion object {
         private const val PREFS_NAME = "chess_helper_settings"
         private const val KEY_AUTO_APPLY = "auto_apply_best_move"
         private const val KEY_HAPTIC = "enable_haptic_feedback"
+        private const val KEY_BOARD_THEME = "board_theme"
+        private const val KEY_SOUND = "enable_sound_effects"
     }
 }

@@ -54,6 +54,11 @@ class OverlayWindowService : LifecycleService() {
         super.onDestroy()
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        overlayWindowHost?.onConfigurationChanged()
+    }
+
     private fun startForegroundCompat() {
         createNotificationChannelIfNeeded()
         startForeground(NOTIFICATION_ID, buildNotification())
@@ -124,4 +129,3 @@ class OverlayWindowService : LifecycleService() {
         }
     }
 }
-

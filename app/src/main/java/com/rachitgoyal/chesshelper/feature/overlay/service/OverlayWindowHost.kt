@@ -81,6 +81,10 @@ class OverlayWindowHost(
         OverlayWindowServiceState.isRunning = false
     }
 
+    fun onConfigurationChanged() {
+        reclampWithinScreen()
+    }
+
     private fun moveBy(delta: Offset) {
         val params = overlayLayoutParams ?: return
         val view = overlayView ?: return
@@ -156,6 +160,4 @@ class OverlayWindowHost(
         private const val OVERLAY_TITLE = "ChessOverlayAssistant"
     }
 }
-
-
 
