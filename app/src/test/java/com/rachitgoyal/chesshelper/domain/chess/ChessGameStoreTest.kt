@@ -116,6 +116,21 @@ class ChessGameStoreTest {
         assertNull(snapshot.selectedSquare)
     }
 
+    @Test
+    fun selectingKingDoesNotShowOpposingKingSquareAsLegalTarget() {
+        val store = ChessGameStore(
+            initialPosition = position(
+                sideToMove = Side.WHITE,
+                "e1" to king(Side.WHITE),
+                "e2" to king(Side.BLACK),
+            ),
+        )
+
+        assertFalse(store.tapSquare("e1"))
+
+        assertFalse(store.snapshot().legalTargets.contains("e2"))
+    }
+
     private fun position(sideToMove: Side, vararg pieces: Pair<String, Piece>): ChessPosition {
         return ChessPosition(
             board = linkedMapOf(*pieces),

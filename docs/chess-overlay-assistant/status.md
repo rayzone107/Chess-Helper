@@ -11,7 +11,7 @@ code_refs:
   - app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardUiState.kt
   - app/src/main/java/com/rachitgoyal/chesshelper/feature/settings/SettingsScreen.kt
   - app/src/test/java/com/rachitgoyal/chesshelper/feature/overlay/OverlayBoardViewModelTest.kt
-last_updated: 2026-03-19
+last_updated: 2026-03-21
 ---
 - active_owner: coder
 - current_state: Plan v3 (streamlined workflow) complete and ready for implementation. No code changes yet in this pass.
@@ -46,15 +46,18 @@ last_updated: 2026-03-19
   - Device/emulator validation is still pending for real Stockfish reuse across repeated overlay requests and for the explicit on-device engine-failure path.
   - This fix now covers `arm64-v8a` and `x86_64`; if physical support for other ABIs is needed later, additional Stockfish builds must be packaged.
 - reviewer_note: >-
-    Reviewer approval for tester handoff after the final persistent-Stockfish re-review: no blocking
-    issue remains against the scoped plan/design. Production construction paths in
-    `OverlayBoardViewModelFactory.kt` and `OverlayWindowHost.kt` both inject
-    `StockfishMoveRecommendationEngine` explicitly, `OverlayBoardViewModel` no longer carries a hidden
-    heuristic or no-op default, engine failures surface as explicit `Engine error` state/detail instead of
-    collapsing into `No move`, and the service-hosted overlay disposes its recommendation executor plus the
-    persistent Stockfish session on hide/destroy. Focused and full debug unit-test runs both passed.
+    Reviewer approval for tester handoff after the 2026-03-21 legality + overlay-UX re-review: no
+    blocking issue remains in the scoped changed files against the current overlay design/user-requested
+    behavior. `ChessRules.kt` keeps move legality owned in the domain layer and now correctly removes
+    king-capture targets so illegal king moves/self-check exposure no longer leak into overlay legal-target
+    affordances. The overlay state/view changes keep the extra UX behavior in the UI layer, call out
+    checkmate clearly, suppress best-move affordances in terminal states, default move history to collapsed,
+    apply the requested semi-transparent treatment, and reduce control clutter without introducing an odd
+    cross-layer dependency.
 - next_reader: tester
-- next_step: run the short manual overlay sanity pass for repeated recommendations, engine-failure surfacing, recommendation retry after failure, and overlay close/reopen behavior on device.
+- next_step: run the manual overlay sanity pass for check/checkmate/stalemate presentation, illegal-king-move
+  disappearance, collapsed-history expand/collapse behavior, and compact-control usability in both expanded
+  and minimized overlay modes.
 - progress_log:
   - owner: orchestrator
     stage: discovery
@@ -186,6 +189,13 @@ last_updated: 2026-03-19
       - `app/src/main/assets/stockfish/stockfish-android-x86_64.gz`
     blockers: []
     next_step: verify on-device that the rebuilt Android engine starts successfully on both a real arm64 device and, if used, an x86_64 emulator.
+  - owner: reviewer
+    stage: review
+    touched_docs:
+      - `docs/chess-overlay-assistant/status.md`
+    touched_code: []
+    blockers: []
+    next_step: tester validates the legality/overlay UX pass on device with emphasis on king-safety move filtering, terminal-state messaging, default-collapsed history, and the lighter control layout.
 
 
 

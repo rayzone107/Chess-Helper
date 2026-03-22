@@ -7,14 +7,15 @@ input_refs:
   - docs/app-improvements/plan.md
 last_updated: 2026-03-21
 ---
-- active_owner: coder
+- active_owner: reviewer
 - current_state: >-
-    All 5 P2 tasks (T14, T12, T10, T13, T11) implemented and unit tests pass (BUILD SUCCESSFUL, 24 tasks).
-    FenParserTest: 4/4 pass. All pre-existing tests unchanged.
-- next_reader: orchestrator
+    Reviewed `SettingsScreen.kt` against the app-improvements plan and the requested settings UX changes.
+    No blocking issues found: system back now routes through `onBack` to return to home, the back affordance is visibly larger,
+    and the board-theme picker now includes previews with a clearer selected state.
+- next_reader: tester
 - next_step: >-
-    P2 tier is now complete. Remaining open questions (Q2, Q5, Q7) block P2 stretch tasks T5/T6/T11-PGN.
-    No further action needed unless P3/stretch work is scheduled.
+    Run a manual smoke pass on the settings screen for back navigation, back-button affordance sizing,
+    and theme-picker clarity/selection feedback.
 - touched_docs:
     - docs/app-improvements/status.md
 - touched_code:
@@ -74,3 +75,15 @@ last_updated: 2026-03-21
         - FenParserTest.kt (T11, new)
       validations:
         - ./gradlew :app:testDebugUnitTest → BUILD SUCCESSFUL, FenParserTest 4/4
+    - owner: reviewer
+      stage: focused SettingsScreen review
+      date: 2026-03-21
+      touched_docs:
+        - docs/app-improvements/status.md
+      touched_code:
+        - app/src/main/java/com/rachitgoyal/chesshelper/feature/settings/SettingsScreen.kt
+      findings: []
+      outcome: approved-with-notes
+      notes:
+        - Validation already provided: ./gradlew :app:testDebugUnitTest --console=plain passed.
+        - No blocking deviations found against T12/T13 plan intent or the requested settings UX changes.

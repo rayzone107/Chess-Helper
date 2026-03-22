@@ -241,7 +241,7 @@ class OverlayBoardViewModelTest {
 
         assertEquals(GameStatus.CHECKMATE, viewModel.uiState.gameStatus)
         assertEquals("h8", viewModel.uiState.checkedKingSquare)
-        assertEquals("Checkmate", viewModel.uiState.compactStatusText)
+        assertEquals("Checkmate • Game over", viewModel.uiState.compactStatusText)
         assertFalse(viewModel.uiState.canRecommend)
     }
 
@@ -263,7 +263,7 @@ class OverlayBoardViewModelTest {
 
         assertEquals(GameStatus.STALEMATE, viewModel.uiState.gameStatus)
         assertNull(viewModel.uiState.checkedKingSquare)
-        assertEquals("Stalemate", viewModel.uiState.compactStatusText)
+        assertEquals("Stalemate • Game over", viewModel.uiState.compactStatusText)
         assertFalse(viewModel.uiState.canRecommend)
     }
 
@@ -346,6 +346,22 @@ class OverlayBoardViewModelTest {
 
         assertEquals(0, viewModel.uiState.moveHistory.size)
         assertNull(viewModel.uiState.lastMove)
+    }
+
+    @Test
+    fun moveHistoryStartsCollapsedAndStaysCollapsedAfterMoves() {
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
+
+        assertFalse(viewModel.uiState.isMoveHistoryExpanded)
+
+        viewModel.onSquareTapped("e2")
+        viewModel.onSquareTapped("e4")
+
+        assertFalse(viewModel.uiState.isMoveHistoryExpanded)
+
+        viewModel.toggleMoveHistoryExpanded()
+
+        assertTrue(viewModel.uiState.isMoveHistoryExpanded)
     }
 
     private fun position(sideToMove: Side, vararg pieces: Pair<String, Piece>): ChessPosition {

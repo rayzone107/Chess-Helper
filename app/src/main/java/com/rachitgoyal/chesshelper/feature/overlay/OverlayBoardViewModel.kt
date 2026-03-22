@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import com.rachitgoyal.chesshelper.domain.chess.ChessGameStore
+import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
 import com.rachitgoyal.chesshelper.domain.chess.model.GameSnapshot
 import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
@@ -43,6 +44,8 @@ class OverlayBoardViewModel(
         uiState = uiState.copy(
             autoApplyBestMove = appSettings?.autoApplyBestMove ?: false,
             enableHapticFeedback = appSettings?.enableHapticFeedback ?: true,
+            boardTheme = appSettings?.boardTheme ?: BoardTheme.CLASSIC,
+            enableSoundEffects = appSettings?.enableSoundEffects ?: false,
         )
     }
 
@@ -88,6 +91,10 @@ class OverlayBoardViewModel(
         )
     }
 
+    fun toggleMoveHistoryExpanded() {
+        uiState = uiState.copy(isMoveHistoryExpanded = !uiState.isMoveHistoryExpanded)
+    }
+
     fun onSquareTapped(squareId: String) {
         val moveMade = store.tapSquare(squareId)
         if (moveMade && uiState.recommendationState == RecommendationState.LOADING) {
@@ -107,6 +114,9 @@ class OverlayBoardViewModel(
         )
         if (moveMade && uiState.enableHapticFeedback) {
             uiState = uiState.copy(hapticEvent = hapticEventForCurrentState())
+        }
+        if (moveMade && uiState.enableSoundEffects) {
+            uiState = uiState.copy(soundEvent = hapticEventForCurrentState())
         }
     }
 
@@ -134,6 +144,9 @@ class OverlayBoardViewModel(
         if (uiState.enableHapticFeedback) {
             uiState = uiState.copy(hapticEvent = hapticEventForCurrentState())
         }
+        if (uiState.enableSoundEffects) {
+            uiState = uiState.copy(soundEvent = hapticEventForCurrentState())
+        }
     }
 
     fun onCopyFenClicked() {
@@ -146,6 +159,10 @@ class OverlayBoardViewModel(
 
     fun onHapticConsumed() {
         uiState = uiState.copy(hapticEvent = null)
+    }
+
+    fun onSoundEventConsumed() {
+        uiState = uiState.copy(soundEvent = null)
     }
 
     private fun hapticEventForCurrentState(): BoardHapticEvent = when {
@@ -176,6 +193,7 @@ class OverlayBoardViewModel(
             recommendationStatusLabel = null,
             recommendationError = null,
         )
+        uiState = uiState.copy(isMoveHistoryExpanded = false)
     }
 
     fun onAssistedSideChanged(side: Side) {
@@ -271,6 +289,27 @@ class OverlayBoardViewModel(
                 }
             }
         }
+    }
+
+    fun onLoadFen(fen: String) {
+        val result = store.loadFen(fen)
+        recommendationRequestVersion++
+        if (result.isSuccess) {
+            syncFromStore(
+                recommendation = null,
+                recommendationState = RecommendationState.IDLE,
+                isRecommendationStale = false,
+                recommendationStatusLabel = null,
+                recommendationError = null,
+            )
+            uiState = uiState.copy(fenLoadError = null, isMoveHistoryExpanded = false)
+        } else {
+            uiState = uiState.copy(fenLoadError = result.exceptionOrNull()?.message ?: "Invalid FEN")
+        }
+    }
+
+    fun onFenLoadErrorConsumed() {
+        uiState = uiState.copy(fenLoadError = null)
     }
 
     override fun onCleared() {

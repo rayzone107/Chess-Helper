@@ -258,7 +258,7 @@ fun OverlayWindowCard(
             }
         } else {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(14.dp),
             ) {
                 ExpandedOverlayHeader(
@@ -374,13 +374,18 @@ private fun OverlayDetailStack(
     onCopyFenClicked: () -> Unit,
     onPasteFenClicked: () -> Unit,
 ) {
-    RecommendationBanner(uiState = uiState)
-    if (uiState.moveHistory.isNotEmpty()) {
-        MoveHistorySection(
-            moveHistory = uiState.moveHistory,
-            isExpanded = uiState.isMoveHistoryExpanded,
-            onToggleExpanded = onToggleMoveHistoryExpanded,
-        )
+    val shouldShowBanner =
+        uiState.gameStatus != GameStatus.NORMAL ||
+            (uiState.recommendationState != com.rachitgoyal.chesshelper.feature.overlay.RecommendationState.IDLE &&
+                uiState.recommendationState != com.rachitgoyal.chesshelper.feature.overlay.RecommendationState.LOADING) ||
+            uiState.activeRecommendedMove != null ||
+            uiState.recommendationError != null
+
+    if (shouldShowBanner) {
+        RecommendationBanner(uiState = uiState)
+    }
+    if (uiState.isMoveHistoryExpanded && uiState.moveHistory.isNotEmpty()) {
+        MoveHistoryPanel(movePairs = uiState.moveHistory.chunked(2))
     }
     HorizontalDivider(color = OverlayDividerColor)
     OverlayControls(
@@ -396,43 +401,6 @@ private fun OverlayDetailStack(
     )
 }
 
-@Composable
-private fun MoveHistorySection(
-    moveHistory: List<MoveRecord>,
-    isExpanded: Boolean,
-    onToggleExpanded: () -> Unit,
-) {
-    val movePairs = moveHistory.chunked(2)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(
-            onClick = onToggleExpanded,
-            shape = RoundedCornerShape(14.dp),
-            color = OverlaySurfaceColor,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = "Moves • ${moveHistory.size}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White,
-                )
-                Text(
-                    text = if (isExpanded) "Hide ↑" else "Show ↓",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = OverlaySecondaryText,
-                )
-            }
-        }
-        if (isExpanded) {
-            MoveHistoryPanel(movePairs = movePairs)
-        }
-    }
-}
 
 @Composable
 private fun MoveHistoryPanel(movePairs: List<List<MoveRecord>>) {

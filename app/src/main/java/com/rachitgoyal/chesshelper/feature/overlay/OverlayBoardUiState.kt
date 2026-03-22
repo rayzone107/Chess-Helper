@@ -2,6 +2,7 @@ package com.rachitgoyal.chesshelper.feature.overlay
 
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
 import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.Piece
@@ -34,6 +35,7 @@ data class OverlayBoardUiState(
     val lastMove: MoveRecord? = null,
     val sideToMove: Side = Side.WHITE,
     val moveHistory: List<MoveRecord> = emptyList(),
+    val isMoveHistoryExpanded: Boolean = false,
     val gameStatus: GameStatus = GameStatus.NORMAL,
     val checkedKingSquare: String? = null,
     val assistedSide: Side = Side.BLACK,
@@ -42,19 +44,30 @@ data class OverlayBoardUiState(
     val isRecommendationStale: Boolean = false,
     val recommendationStatusLabel: String? = null,
     val recommendationError: String? = null,
-    /** Mirrors [AppSettings.autoApplyBestMove]. Refreshed each time a recommendation is requested. */
+    /** Mirrors the auto-apply preference. Refreshed each time a recommendation is requested. */
     val autoApplyBestMove: Boolean = true,
     /** Current position as a FEN string; refreshed after every move. */
     val currentFen: String = "",
     /** One-shot flag: set to true to trigger a FEN-copied confirmation in the UI. */
     val fenCopied: Boolean = false,
-    /** Mirrors [AppSettings.enableHapticFeedback]. */
+    /** Mirrors the haptic-feedback preference. */
     val enableHapticFeedback: Boolean = true,
     /** One-shot haptic pulse emitted after a legal move; consumed by the UI layer. */
     val hapticEvent: BoardHapticEvent? = null,
+    /** Active board colour theme. */
+    val boardTheme: BoardTheme = BoardTheme.CLASSIC,
+    /** One-shot sound pulse emitted after a legal move; consumed by the UI layer. */
+    val soundEvent: BoardHapticEvent? = null,
+    /** Mirrors [AppSettings.enableSoundEffects]. */
+    val enableSoundEffects: Boolean = false,
+    /** One-shot error message from a failed FEN load; consumed by the UI layer. */
+    val fenLoadError: String? = null,
 ) {
     val isGameOver: Boolean
         get() = gameStatus.isTerminal
+
+    val isCheckmate: Boolean
+        get() = gameStatus == GameStatus.CHECKMATE
 
     val canUndo: Boolean
         get() = moveHistory.isNotEmpty()
@@ -85,8 +98,8 @@ data class OverlayBoardUiState(
             return when {
                 recommendationState == RecommendationState.ERROR && recommendationError != null -> recommendationError
                 activeMove != null && recommendationSummary != null -> recommendationSummary
-                gameStatus == GameStatus.CHECKMATE -> "Checkmate"
-                gameStatus == GameStatus.STALEMATE -> "Stalemate"
+                gameStatus == GameStatus.CHECKMATE -> "Checkmate — game over. No legal moves remain."
+                gameStatus == GameStatus.STALEMATE -> "Stalemate — game over."
                 gameStatus == GameStatus.CHECK -> "Check"
                 recommendationState == RecommendationState.LOADING -> "Analyzing…"
                 else -> compactStatusText
@@ -101,8 +114,8 @@ data class OverlayBoardUiState(
             val activeMove = activeRecommendedMove
             val statusLabel = recommendationStatusLabel
             return when {
-                gameStatus == GameStatus.CHECKMATE -> "Checkmate"
-                gameStatus == GameStatus.STALEMATE -> "Stalemate"
+                gameStatus == GameStatus.CHECKMATE -> "Checkmate • Game over"
+                gameStatus == GameStatus.STALEMATE -> "Stalemate • Game over"
                 gameStatus == GameStatus.CHECK && recommendationState == RecommendationState.LOADING -> "Check • Analyzing…"
                 gameStatus == GameStatus.CHECK && activeMove != null -> "Check • Best: ${activeMove.notation}"
                 gameStatus == GameStatus.CHECK && recommendation != null && isRecommendationStale -> "Check • Best: ${recommendation.move.notation} • stale"

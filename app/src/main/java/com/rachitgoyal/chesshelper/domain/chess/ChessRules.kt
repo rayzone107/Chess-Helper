@@ -182,7 +182,7 @@ object ChessRules {
             if (targetFile !in 0..7 || targetRank !in 0..7) continue
             val targetSquare = squareName(targetFile, targetRank)
             val targetPiece = position.board[targetSquare]
-            if (targetPiece != null && targetPiece.side != piece.side) {
+            if (targetPiece != null && targetPiece.side != piece.side && targetPiece.type != PieceType.KING) {
                 moves += pawnMove(from, targetSquare, piece, promotionRank, capturedPiece = targetPiece)
             } else if (targetSquare == position.enPassantTarget) {
                 val captureSquare = squareName(targetFile, fromRank)
@@ -254,7 +254,7 @@ object ChessRules {
                 if (occupant == null) {
                     moves += MoveRecord(from = from, to = square, piece = piece)
                 } else {
-                    if (occupant.side != piece.side) {
+                    if (occupant.side != piece.side && occupant.type != PieceType.KING) {
                         moves += MoveRecord(from = from, to = square, piece = piece, capturedPiece = occupant)
                     }
                     break
@@ -354,7 +354,9 @@ object ChessRules {
         val occupant = position.board[square]
         return when {
             occupant == null -> MoveRecord(from = from, to = square, piece = piece)
-            occupant.side != piece.side -> MoveRecord(from = from, to = square, piece = piece, capturedPiece = occupant)
+            occupant.side != piece.side && occupant.type != PieceType.KING -> {
+                MoveRecord(from = from, to = square, piece = piece, capturedPiece = occupant)
+            }
             else -> null
         }
     }
@@ -408,7 +410,8 @@ object ChessRules {
             while (file in 0..7 && rank in 0..7) {
                 val occupant = position.board[squareName(file, rank)]
                 if (occupant != null) {
-                    return occupant.side == bySide && occupant.type in validTypes
+                    if (occupant.side == bySide && occupant.type in validTypes) return true
+                    break // blocked in this direction, try next
                 }
                 file += fileDelta
                 rank += rankDelta
