@@ -23,12 +23,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -209,29 +210,48 @@ fun OverlayWindowCard(
         { showCloseConfirmation = true }
     }
 
-    if (showCloseConfirmation && onCloseOverlay != null) {
-        AlertDialog(
-            onDismissRequest = { showCloseConfirmation = false },
-            title = { Text("Close overlay?") },
-            text = { Text("The current game will be saved to match history.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showCloseConfirmation = false
-                    onCloseOverlay()
-                }) { Text("Close") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCloseConfirmation = false }) { Text("Cancel") }
-            },
-        )
-    }
-
     Card(
         modifier = modifier.sizeIn(maxWidth = 420.dp),
         shape = RoundedCornerShape(if (uiState.panelMode == PanelMode.EXPANDED) 24.dp else 20.dp),
         colors = CardDefaults.cardColors(containerColor = OverlayCardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (uiState.isDragging) 14.dp else 8.dp),
     ) {
+        if (showCloseConfirmation) {
+            // Inline confirmation rendered inside the overlay card (no Dialog window)
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "Close overlay?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                )
+                Text(
+                    text = "The current game will be saved to match history.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OverlaySecondaryText,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = { showCloseConfirmation = false }) {
+                        Text("Cancel", color = Color.White)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            showCloseConfirmation = false
+                            onCloseOverlay?.invoke()
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                    ) {
+                        Text("Close")
+                    }
+                }
+            }
+        } else {
         if (uiState.panelMode == PanelMode.MINIMIZED) {
             MinimizedOverlayHeader(
                 uiState = uiState,
@@ -320,6 +340,7 @@ fun OverlayWindowCard(
                 )
             }
         }
+        } // end else (not showing close confirmation)
     }
 }
 
