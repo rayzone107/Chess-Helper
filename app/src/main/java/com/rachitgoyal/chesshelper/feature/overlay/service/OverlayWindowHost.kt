@@ -12,6 +12,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.rachitgoyal.chesshelper.engine.stockfish.StockfishMoveRecommendationEngine
+import com.rachitgoyal.chesshelper.data.MatchHistoryRepository
 import com.rachitgoyal.chesshelper.R
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayBoardViewModel
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayWindowContent
@@ -29,6 +30,7 @@ class OverlayWindowHost(
     private val overlayViewModel = OverlayBoardViewModel(
         moveRecommendationEngine = StockfishMoveRecommendationEngine(appContext),
         appSettings = AppSettings(appContext),
+        matchHistoryRepository = MatchHistoryRepository(appContext),
     )
 
     private var overlayView: ComposeView? = null

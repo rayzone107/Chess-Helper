@@ -44,6 +44,6 @@ fun OverlayWindowContent(
         onLoadFen = viewModel::onLoadFen,
         onFenLoadErrorConsumed = viewModel::onFenLoadErrorConsumed,
         dragHandleModifier = dragModifier,
-        onCloseOverlay = onRequestClose,
+        onCloseOverlay = { viewModel.saveAndClose(onRequestClose) },
     )
 }

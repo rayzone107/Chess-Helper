@@ -9,16 +9,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
+import com.rachitgoyal.chesshelper.data.MatchHistoryRepository
 import com.rachitgoyal.chesshelper.domain.chess.ChessGameStore
 import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
 import com.rachitgoyal.chesshelper.domain.chess.model.GameSnapshot
 import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
+import com.rachitgoyal.chesshelper.domain.chess.model.MatchRecord
+import com.rachitgoyal.chesshelper.domain.chess.model.MatchResult
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
 import com.rachitgoyal.chesshelper.engine.model.EngineRecommendation
 import com.rachitgoyal.chesshelper.engine.stockfish.ChessPositionFenEncoder
 import com.rachitgoyal.chesshelper.settings.AppSettings
+import java.util.UUID
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -28,6 +32,7 @@ class OverlayBoardViewModel(
     private val store: ChessGameStore = ChessGameStore(),
     private val moveRecommendationEngine: MoveRecommendationEngine,
     private val appSettings: AppSettings? = null,
+    private val matchHistoryRepository: MatchHistoryRepository? = null,
     private val recommendationExecutor: ExecutorService = Executors.newSingleThreadExecutor(),
     private val uiExecutor: Executor = defaultUiExecutor(),
 ) : ViewModel() {
@@ -38,6 +43,10 @@ class OverlayBoardViewModel(
     private var panelSizePx: IntSize = IntSize.Zero
     private var recommendationRequestVersion: Int = 0
     private var isDisposed: Boolean = false
+    /** Guards [saveCurrentGame] to avoid duplicate entries on game-over + close/reset. */
+    private var gameSaved: Boolean = false
+    /** Starting FEN for the current game. Null = standard initial position. */
+    private var startingFen: String? = null
 
     init {
         syncFromStore()
@@ -118,6 +127,9 @@ class OverlayBoardViewModel(
         if (moveMade && uiState.enableSoundEffects) {
             uiState = uiState.copy(soundEvent = hapticEventForCurrentState())
         }
+        if (moveMade && uiState.isGameOver) {
+            saveCurrentGame()
+        }
     }
 
     fun onApplyRecommendationClicked() {
@@ -146,6 +158,9 @@ class OverlayBoardViewModel(
         }
         if (uiState.enableSoundEffects) {
             uiState = uiState.copy(soundEvent = hapticEventForCurrentState())
+        }
+        if (uiState.isGameOver) {
+            saveCurrentGame()
         }
     }
 
@@ -184,6 +199,7 @@ class OverlayBoardViewModel(
     }
 
     fun onResetBoard() {
+        saveCurrentGame()
         store.reset()
         recommendationRequestVersion += 1
         syncFromStore(
@@ -194,6 +210,8 @@ class OverlayBoardViewModel(
             recommendationError = null,
         )
         uiState = uiState.copy(isMoveHistoryExpanded = false)
+        gameSaved = false
+        startingFen = null
     }
 
     fun onAssistedSideChanged(side: Side) {
@@ -292,6 +310,7 @@ class OverlayBoardViewModel(
     }
 
     fun onLoadFen(fen: String) {
+        saveCurrentGame()
         val result = store.loadFen(fen)
         recommendationRequestVersion++
         if (result.isSuccess) {
@@ -303,6 +322,8 @@ class OverlayBoardViewModel(
                 recommendationError = null,
             )
             uiState = uiState.copy(fenLoadError = null, isMoveHistoryExpanded = false)
+            gameSaved = false
+            startingFen = fen
         } else {
             uiState = uiState.copy(fenLoadError = result.exceptionOrNull()?.message ?: "Invalid FEN")
         }
@@ -310,6 +331,42 @@ class OverlayBoardViewModel(
 
     fun onFenLoadErrorConsumed() {
         uiState = uiState.copy(fenLoadError = null)
+    }
+
+    /**
+     * Saves the current game to match history if there are moves.
+     */
+    fun saveCurrentGame() {
+        if (gameSaved) return
+        val moves = uiState.moveHistory
+        if (moves.isEmpty()) return
+        val result = when (uiState.gameStatus) {
+            GameStatus.CHECKMATE -> {
+                // The side to move is the one who got checkmated
+                if (uiState.sideToMove == Side.WHITE) MatchResult.BLACK_WINS else MatchResult.WHITE_WINS
+            }
+            GameStatus.STALEMATE -> MatchResult.STALEMATE
+            else -> MatchResult.INCOMPLETE
+        }
+        matchHistoryRepository?.save(
+            MatchRecord(
+                id = UUID.randomUUID().toString(),
+                timestampMillis = System.currentTimeMillis(),
+                moves = moves,
+                result = result,
+                assistedSide = uiState.assistedSide,
+                startingFen = startingFen,
+            ),
+        )
+        gameSaved = true
+    }
+
+    /**
+     * Save the game and then execute the close callback.
+     */
+    fun saveAndClose(close: () -> Unit) {
+        saveCurrentGame()
+        close()
     }
 
     override fun onCleared() {

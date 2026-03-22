@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -30,8 +31,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -197,6 +203,29 @@ fun OverlayWindowCard(
 
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+    // Close-confirmation state
+    var showCloseConfirmation by remember { mutableStateOf(false) }
+    val interceptedClose: (() -> Unit)? = onCloseOverlay?.let {
+        { showCloseConfirmation = true }
+    }
+
+    if (showCloseConfirmation && onCloseOverlay != null) {
+        AlertDialog(
+            onDismissRequest = { showCloseConfirmation = false },
+            title = { Text("Close overlay?") },
+            text = { Text("The current game will be saved to match history.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCloseConfirmation = false
+                    onCloseOverlay()
+                }) { Text("Close") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCloseConfirmation = false }) { Text("Cancel") }
+            },
+        )
+    }
+
     Card(
         modifier = modifier.sizeIn(maxWidth = 420.dp),
         shape = RoundedCornerShape(if (uiState.panelMode == PanelMode.EXPANDED) 24.dp else 20.dp),
@@ -208,7 +237,7 @@ fun OverlayWindowCard(
                 uiState = uiState,
                 dragHandleModifier = dragHandleModifier,
                 onTogglePanelMode = onTogglePanelMode,
-                onCloseOverlay = onCloseOverlay,
+                onCloseOverlay = interceptedClose,
             )
         } else if (isLandscape) {
             Row(
@@ -223,7 +252,7 @@ fun OverlayWindowCard(
                         uiState = uiState,
                         dragHandleModifier = dragHandleModifier,
                         onTogglePanelMode = onTogglePanelMode,
-                        onCloseOverlay = onCloseOverlay,
+                        onCloseOverlay = interceptedClose,
                     )
                     ChessBoard(
                         board = uiState.board,
@@ -265,7 +294,7 @@ fun OverlayWindowCard(
                     uiState = uiState,
                     dragHandleModifier = dragHandleModifier,
                     onTogglePanelMode = onTogglePanelMode,
-                    onCloseOverlay = onCloseOverlay,
+                    onCloseOverlay = interceptedClose,
                 )
                 ChessBoard(
                     board = uiState.board,

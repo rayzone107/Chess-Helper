@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat.startForegroundService
+import com.rachitgoyal.chesshelper.data.MatchHistoryRepository
 import com.rachitgoyal.chesshelper.feature.overlay.service.OverlayWindowService
 import com.rachitgoyal.chesshelper.feature.overlay.service.OverlayWindowServiceState
 import com.rachitgoyal.chesshelper.ui.theme.ChessHelperTheme
@@ -19,16 +20,19 @@ class MainActivity : ComponentActivity() {
     private var overlayPermissionGranted by mutableStateOf(false)
     private var pendingOverlayLaunch by mutableStateOf(false)
     private lateinit var appSettings: AppSettings
+    private lateinit var matchHistoryRepository: MatchHistoryRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         appSettings = AppSettings(applicationContext)
+        matchHistoryRepository = MatchHistoryRepository(applicationContext)
         refreshOverlayPermission()
         setContent {
             ChessHelperTheme {
                 ChessHelperApp(
                     appSettings = appSettings,
+                    matchHistoryRepository = matchHistoryRepository,
                     overlayPermissionGranted = overlayPermissionGranted,
                     overlayRunning = OverlayWindowServiceState.isRunning,
                     onLaunchOverlay = ::launchOverlay,
