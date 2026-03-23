@@ -45,6 +45,7 @@ import com.rachitgoyal.chesshelper.feature.history.MatchHistoryContent
 import com.rachitgoyal.chesshelper.feature.history.MatchReplayContent
 import com.rachitgoyal.chesshelper.feature.settings.SettingsContent
 import com.rachitgoyal.chesshelper.settings.AppSettings
+import com.rachitgoyal.chesshelper.ui.theme.OverlayColors
 
 private object Routes {
     const val HOME = "home"
@@ -175,7 +176,7 @@ private fun HomeContent(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
-                        Color(0xFF0F172A),
+                        OverlayColors.HomeGradientEnd,
                     ),
                 ),
             ),
@@ -219,7 +220,7 @@ private fun HomeContent(
                             onClick = {},
                             label = { Text("✓ Overlay permission granted") },
                             colors = AssistChipDefaults.assistChipColors(
-                                labelColor = Color(0xFF22C55E),
+                                labelColor = OverlayColors.SuccessGreen,
                             ),
                         )
                     } else {

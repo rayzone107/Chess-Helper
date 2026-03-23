@@ -27,8 +27,9 @@ import androidx.compose.ui.unit.dp
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayBoardUiState
 import com.rachitgoyal.chesshelper.feature.overlay.RecommendationState
+import com.rachitgoyal.chesshelper.ui.theme.OverlayColors
 
-private val ControlSurfaceColor = Color(0xFF1E293B)
+private val ControlSurfaceColor = OverlayColors.Surface
 
 @Composable
 fun OverlayControls(
@@ -65,7 +66,7 @@ fun OverlayControls(
                 containerColor = ControlSurfaceColor,
                 contentColor = Color.White,
                 disabledContainerColor = ControlSurfaceColor,
-                disabledContentColor = Color(0xFF94A3B8),
+                disabledContentColor = OverlayColors.DisabledText,
             ),
             modifier = Modifier.weight(1f),
         ) {

@@ -30,6 +30,7 @@ import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
+import com.rachitgoyal.chesshelper.ui.theme.OverlayColors
 
 @Composable
 fun ChessBoard(
@@ -47,7 +48,7 @@ fun ChessBoard(
 ) {
     val ranks = if (bottomSide == Side.WHITE) (7 downTo 0).toList() else (0..7).toList()
     val files = if (bottomSide == Side.WHITE) (0..7).toList() else (7 downTo 0).toList()
-    val configBorderColor = Color(0xFFF59E0B)
+    val configBorderColor = OverlayColors.ConfigAccent
 
     Box(
         modifier = modifier
@@ -70,9 +71,9 @@ fun ChessBoard(
                         val isLight = (file + rank) % 2 == 0
                         val baseColor = if (isLight) boardTheme.lightSquareColor else boardTheme.darkSquareColor
                         val backgroundColor = when {
-                            isSelected -> Color(0xFF2563EB)
-                            squareId in legalTargets -> Color(0xFFB8E1FF)
-                            isLastMove -> Color(0xFFFACC15)
+                            isSelected -> OverlayColors.SelectedSquare
+                            squareId in legalTargets -> OverlayColors.LegalTargetSquare
+                            isLastMove -> OverlayColors.LastMoveHighlight
                             else -> baseColor
                         }
                         Box(
@@ -90,7 +91,7 @@ fun ChessBoard(
             Canvas(modifier = Modifier.matchParentSize()) {
                 val fromCenter = squareCenter(recommendedMove.from, bottomSide, size.width)
                 val toCenter = squareCenter(recommendedMove.to, bottomSide, size.width)
-                val arrowColor = Color(0xFF22C55E)
+                val arrowColor = OverlayColors.RecommendedMoveArrow
                 val lineWidth = size.width * 0.02f
 
                 drawLine(
@@ -139,7 +140,7 @@ fun ChessBoard(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(3.dp)
-                                        .border(3.dp, Color(0xFFEF4444), RoundedCornerShape(8.dp)),
+                                        .border(3.dp, OverlayColors.CheckBorder, RoundedCornerShape(8.dp)),
                                 )
                             }
                             if (piece != null) {
@@ -148,16 +149,16 @@ fun ChessBoard(
                                     fontSize = 30.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
-                                    color = if (piece.side == Side.WHITE) Color.White else Color(0xFF0F172A),
+                                    color = if (piece.side == Side.WHITE) OverlayColors.WhitePiece else OverlayColors.BlackPiece,
                                 )
                             }
                             if (isLegalTarget) {
                                 Canvas(modifier = Modifier.matchParentSize().padding(10.dp)) {
                                     if (piece == null) {
-                                        drawCircle(color = Color(0xCC0F172A), radius = size.minDimension * 0.12f)
+                                        drawCircle(color = OverlayColors.LegalTargetDot, radius = size.minDimension * 0.12f)
                                     } else {
                                         drawCircle(
-                                            color = Color(0xFF0F172A),
+                                            color = OverlayColors.LegalTargetRing,
                                             radius = size.minDimension * 0.32f,
                                             style = Stroke(width = size.minDimension * 0.06f),
                                         )
@@ -176,7 +177,7 @@ fun ChessBoard(
                                     .align(Alignment.BottomEnd)
                                     .padding(4.dp),
                                 fontSize = 10.sp,
-                                color = Color(0xAA0F172A),
+                                color = OverlayColors.CoordinateLabel,
                             )
                         }
                     }

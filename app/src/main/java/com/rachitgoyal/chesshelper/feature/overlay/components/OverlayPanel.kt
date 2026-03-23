@@ -61,81 +61,20 @@ import androidx.compose.ui.unit.sp
 import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.PieceType
-import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
+import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.feature.overlay.BoardHapticEvent
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayBoardUiState
 import com.rachitgoyal.chesshelper.feature.overlay.PanelMode
+import com.rachitgoyal.chesshelper.ui.theme.OverlayColors
 
-private val OverlayCardColor = Color(0xFF0F172A)
-private val OverlaySurfaceColor = Color(0xFF1E293B)
-private val OverlayDividerColor = Color(0xFF334155)
-private val OverlaySecondaryText = Color(0xFFCBD5E1)
-private val ConfigModeAccent = Color(0xFFF59E0B)
-private val ConfigModeCardColor = Color(0xFF3B2300)
-
-@Composable
-fun OverlayPanel(
-    uiState: OverlayBoardUiState,
-    onSquareTapped: (String) -> Unit,
-    onRecommendClicked: () -> Unit,
-    onApplyRecommendationClicked: () -> Unit,
-    onUndoClicked: () -> Unit,
-    onResetBoard: () -> Unit,
-    onTogglePanelMode: () -> Unit,
-    onToggleMoveHistoryExpanded: () -> Unit,
-    onAssistedSideChanged: (Side) -> Unit,
-    onRootBoundsChanged: (IntSize) -> Unit,
-    onPanelSizeChanged: (IntSize) -> Unit,
-    onDragStart: () -> Unit,
-    onDrag: (Offset) -> Unit,
-    onDragEnd: () -> Unit,
-    onCopyFenClicked: () -> Unit,
-    onFenCopyConsumed: () -> Unit,
-    onHapticConsumed: () -> Unit,
-    onSoundEventConsumed: () -> Unit,
-    onLoadFen: (String) -> Unit,
-    onFenLoadErrorConsumed: () -> Unit,
-) {
-    val dragModifier = Modifier.pointerInput(uiState.panelMode) {
-        detectDragGestures(
-            onDragStart = { onDragStart() },
-            onDragEnd = onDragEnd,
-            onDragCancel = onDragEnd,
-        ) { change, dragAmount ->
-            change.consume()
-            onDrag(dragAmount)
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .onSizeChanged(onRootBoundsChanged),
-    ) {
-        OverlayWindowCard(
-            uiState = uiState,
-            onSquareTapped = onSquareTapped,
-            onRecommendClicked = onRecommendClicked,
-            onApplyRecommendationClicked = onApplyRecommendationClicked,
-            onUndoClicked = onUndoClicked,
-            onResetBoard = onResetBoard,
-            onTogglePanelMode = onTogglePanelMode,
-            onToggleMoveHistoryExpanded = onToggleMoveHistoryExpanded,
-            onAssistedSideChanged = onAssistedSideChanged,
-            dragHandleModifier = dragModifier,
-            onCopyFenClicked = onCopyFenClicked,
-            onFenCopyConsumed = onFenCopyConsumed,
-            onHapticConsumed = onHapticConsumed,
-            onSoundEventConsumed = onSoundEventConsumed,
-            onLoadFen = onLoadFen,
-            onFenLoadErrorConsumed = onFenLoadErrorConsumed,
-            modifier = Modifier
-                .offset { uiState.panelOffsetPx }
-                .onSizeChanged(onPanelSizeChanged),
-        )
-    }
-}
+// Aliases for brevity — all values come from the shared design-system object.
+private val OverlayCardColor    = OverlayColors.CardBackground
+private val OverlaySurfaceColor = OverlayColors.Surface
+private val OverlayDividerColor = OverlayColors.Divider
+private val OverlaySecondaryText = OverlayColors.SecondaryText
+private val ConfigModeAccent    = OverlayColors.ConfigAccent
+private val ConfigModeCardColor = OverlayColors.ConfigCardBackground
 
 @Composable
 fun OverlayWindowCard(
@@ -269,7 +208,7 @@ fun OverlayWindowCard(
                             showCloseConfirmation = false
                             onCloseOverlay?.invoke()
                         },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OverlayColors.CheckBorder),
                     ) {
                         Text("Close")
                     }
@@ -581,16 +520,16 @@ private fun RecommendationBanner(
     onResetBoard: () -> Unit,
 ) {
     val containerColor = when {
-        uiState.gameStatus == GameStatus.CHECKMATE -> Color(0xFFDC2626)
-        uiState.gameStatus == GameStatus.STALEMATE -> Color(0xFF475569)
-        uiState.isRecommendationBannerError -> Color(0xFF7F1D1D)
-        uiState.gameStatus == GameStatus.CHECK -> Color(0xFF7C2D12)
+        uiState.gameStatus == GameStatus.CHECKMATE -> OverlayColors.Error
+        uiState.gameStatus == GameStatus.STALEMATE -> OverlayColors.StalemateBackground
+        uiState.isRecommendationBannerError -> OverlayColors.ErrorDark
+        uiState.gameStatus == GameStatus.CHECK -> OverlayColors.WarningDark
         else -> OverlaySurfaceColor
     }
     val textColor = when {
         uiState.gameStatus == GameStatus.CHECKMATE -> Color.White
-        uiState.isRecommendationBannerError -> Color(0xFFFCA5A5)
-        else -> Color(0xFFE2E8F0)
+        uiState.isRecommendationBannerError -> OverlayColors.ErrorTextLight
+        else -> OverlayColors.InfoText
     }
     Surface(
         color = containerColor,
@@ -644,7 +583,7 @@ private fun ConfigModeControls(
     // Validation error
     if (uiState.configValidationError != null) {
         Surface(
-            color = Color(0xFFDC2626),
+            color = OverlayColors.Error,
             shape = RoundedCornerShape(12.dp),
         ) {
             Row(
@@ -678,7 +617,7 @@ private fun ConfigModeControls(
 
     if (uiState.hasConfigChanges && showDiscardConfirmation) {
         Surface(
-            color = Color(0xFF7F1D1D),
+            color = OverlayColors.ErrorDark,
             shape = RoundedCornerShape(12.dp),
         ) {
             Column(
@@ -703,7 +642,7 @@ private fun ConfigModeControls(
                         showDiscardConfirmation = false
                         onDiscardConfigChanges()
                     }) {
-                        Text("Discard", color = Color(0xFFFCA5A5))
+                        Text("Discard", color = OverlayColors.DiscardText)
                     }
                 }
             }
@@ -845,7 +784,7 @@ private fun ConfigModeControls(
                     .padding(vertical = 12.dp)
                     .fillMaxWidth(),
                 style = MaterialTheme.typography.titleSmall,
-                color = Color(0xFF1A1200),
+                color = OverlayColors.ConfigDoneText,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
@@ -900,7 +839,7 @@ private fun CatalogPieceButton(
         color = if (isSelected) ConfigModeAccent.copy(alpha = 0.5f) else OverlaySurfaceColor,
         onClick = onClick,
         modifier = modifier.then(
-            if (isSelected) Modifier.border(1.5.dp, ConfigModeAccent, RoundedCornerShape(8.dp))
+            if (isSelected) Modifier.border(1.dp, ConfigModeAccent, RoundedCornerShape(8.dp))
             else Modifier
         ),
     ) {
@@ -912,8 +851,9 @@ private fun CatalogPieceButton(
         ) {
             Text(
                 text = piece.symbol,
+                fontSize = 22.sp,
                 style = MaterialTheme.typography.titleLarge,
-                color = if (piece.side == Side.WHITE) Color.White else Color(0xFF0F172A),
+                color = if (piece.side == Side.WHITE) OverlayColors.WhitePiece else OverlayColors.BlackPiece,
             )
         }
     }
