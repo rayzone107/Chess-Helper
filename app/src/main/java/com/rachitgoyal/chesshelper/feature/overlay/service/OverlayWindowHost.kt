@@ -83,6 +83,12 @@ class OverlayWindowHost(
         OverlayWindowServiceState.isRunning = false
     }
 
+    fun resumeGame(matchId: String) {
+        val repo = MatchHistoryRepository(appContext)
+        val match = repo.getById(matchId) ?: return
+        overlayViewModel.onResumeGame(match)
+    }
+
     fun onConfigurationChanged() {
         reclampWithinScreen()
     }

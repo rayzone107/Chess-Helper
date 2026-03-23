@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -64,6 +65,8 @@ private val OverlayCardColor = Color(0xCC0F172A)
 private val OverlaySurfaceColor = Color(0xB31E293B)
 private val OverlayDividerColor = Color(0x801E293B)
 private val OverlaySecondaryText = Color(0xFFCBD5E1)
+private val ConfigModeAccent = Color(0xFFF59E0B)
+private val ConfigModeCardColor = Color(0xCC3B2300)
 
 @Composable
 fun OverlayPanel(
@@ -146,6 +149,13 @@ fun OverlayWindowCard(
     onSoundEventConsumed: () -> Unit,
     onLoadFen: (String) -> Unit,
     onFenLoadErrorConsumed: () -> Unit,
+    onEnterConfigMode: () -> Unit = {},
+    onExitConfigMode: () -> Unit = {},
+    onConfigUndo: () -> Unit = {},
+    onConfigRedo: () -> Unit = {},
+    onConfigClearBoard: () -> Unit = {},
+    onConfigResetToStart: () -> Unit = {},
+    onConfigToggleSideToMove: () -> Unit = {},
     modifier: Modifier = Modifier,
     onCloseOverlay: (() -> Unit)? = null,
 ) {
@@ -211,9 +221,13 @@ fun OverlayWindowCard(
     }
 
     Card(
-        modifier = modifier.sizeIn(maxWidth = 420.dp),
+        modifier = modifier
+            .sizeIn(maxWidth = 420.dp)
+            .alpha(uiState.overlayOpacity),
         shape = RoundedCornerShape(if (uiState.panelMode == PanelMode.EXPANDED) 24.dp else 20.dp),
-        colors = CardDefaults.cardColors(containerColor = OverlayCardColor),
+        colors = CardDefaults.cardColors(
+            containerColor = if (uiState.isConfigMode) ConfigModeCardColor else OverlayCardColor,
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (uiState.isDragging) 14.dp else 8.dp),
     ) {
         if (showCloseConfirmation) {
@@ -276,14 +290,16 @@ fun OverlayWindowCard(
                     )
                     ChessBoard(
                         board = uiState.board,
-                        selectedSquare = uiState.selectedSquare,
-                        legalTargets = uiState.legalTargets,
-                        lastMove = uiState.lastMove,
-                        checkedKingSquare = uiState.checkedKingSquare,
-                        recommendedMove = uiState.activeRecommendedMove,
+                        selectedSquare = if (uiState.isConfigMode) uiState.configSelectedSquare else uiState.selectedSquare,
+                        legalTargets = if (uiState.isConfigMode) emptySet() else uiState.legalTargets,
+                        lastMove = if (uiState.isConfigMode) null else uiState.lastMove,
+                        checkedKingSquare = if (uiState.isConfigMode) null else uiState.checkedKingSquare,
+                        recommendedMove = if (uiState.isConfigMode) null else uiState.activeRecommendedMove,
                         bottomSide = uiState.boardBottomSide,
                         onSquareTapped = onSquareTapped,
                         boardTheme = uiState.boardTheme,
+                        modifier = Modifier.alpha(uiState.boardOpacity),
+                        isConfigMode = uiState.isConfigMode,
                     )
                 }
                 Column(
@@ -292,17 +308,30 @@ fun OverlayWindowCard(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    OverlayDetailStack(
-                        uiState = uiState,
-                        onToggleMoveHistoryExpanded = onToggleMoveHistoryExpanded,
-                        onRecommendClicked = onRecommendClicked,
-                        onApplyRecommendationClicked = onApplyRecommendationClicked,
-                        onUndoClicked = onUndoClicked,
-                        onResetBoard = onResetBoard,
-                        onAssistedSideChanged = onAssistedSideChanged,
-                        onCopyFenClicked = onCopyFenClicked,
-                        onPasteFenClicked = onPasteFen,
-                    )
+                    if (uiState.isConfigMode) {
+                        ConfigModeControls(
+                            uiState = uiState,
+                            onExitConfigMode = onExitConfigMode,
+                            onConfigUndo = onConfigUndo,
+                            onConfigRedo = onConfigRedo,
+                            onConfigClearBoard = onConfigClearBoard,
+                            onConfigResetToStart = onConfigResetToStart,
+                            onConfigToggleSideToMove = onConfigToggleSideToMove,
+                        )
+                    } else {
+                        OverlayDetailStack(
+                            uiState = uiState,
+                            onToggleMoveHistoryExpanded = onToggleMoveHistoryExpanded,
+                            onRecommendClicked = onRecommendClicked,
+                            onApplyRecommendationClicked = onApplyRecommendationClicked,
+                            onUndoClicked = onUndoClicked,
+                            onResetBoard = onResetBoard,
+                            onAssistedSideChanged = onAssistedSideChanged,
+                            onCopyFenClicked = onCopyFenClicked,
+                            onPasteFenClicked = onPasteFen,
+                            onEnterConfigMode = onEnterConfigMode,
+                        )
+                    }
                 }
             }
         } else {
@@ -318,26 +347,41 @@ fun OverlayWindowCard(
                 )
                 ChessBoard(
                     board = uiState.board,
-                    selectedSquare = uiState.selectedSquare,
-                    legalTargets = uiState.legalTargets,
-                    lastMove = uiState.lastMove,
-                    checkedKingSquare = uiState.checkedKingSquare,
-                    recommendedMove = uiState.activeRecommendedMove,
+                    selectedSquare = if (uiState.isConfigMode) uiState.configSelectedSquare else uiState.selectedSquare,
+                    legalTargets = if (uiState.isConfigMode) emptySet() else uiState.legalTargets,
+                    lastMove = if (uiState.isConfigMode) null else uiState.lastMove,
+                    checkedKingSquare = if (uiState.isConfigMode) null else uiState.checkedKingSquare,
+                    recommendedMove = if (uiState.isConfigMode) null else uiState.activeRecommendedMove,
                     bottomSide = uiState.boardBottomSide,
                     onSquareTapped = onSquareTapped,
                     boardTheme = uiState.boardTheme,
+                    modifier = Modifier.alpha(uiState.boardOpacity),
+                    isConfigMode = uiState.isConfigMode,
                 )
-                OverlayDetailStack(
-                    uiState = uiState,
-                    onToggleMoveHistoryExpanded = onToggleMoveHistoryExpanded,
-                    onRecommendClicked = onRecommendClicked,
-                    onApplyRecommendationClicked = onApplyRecommendationClicked,
-                    onUndoClicked = onUndoClicked,
-                    onResetBoard = onResetBoard,
-                    onAssistedSideChanged = onAssistedSideChanged,
-                    onCopyFenClicked = onCopyFenClicked,
-                    onPasteFenClicked = onPasteFen,
-                )
+                if (uiState.isConfigMode) {
+                    ConfigModeControls(
+                        uiState = uiState,
+                        onExitConfigMode = onExitConfigMode,
+                        onConfigUndo = onConfigUndo,
+                        onConfigRedo = onConfigRedo,
+                        onConfigClearBoard = onConfigClearBoard,
+                        onConfigResetToStart = onConfigResetToStart,
+                        onConfigToggleSideToMove = onConfigToggleSideToMove,
+                    )
+                } else {
+                    OverlayDetailStack(
+                        uiState = uiState,
+                        onToggleMoveHistoryExpanded = onToggleMoveHistoryExpanded,
+                        onRecommendClicked = onRecommendClicked,
+                        onApplyRecommendationClicked = onApplyRecommendationClicked,
+                        onUndoClicked = onUndoClicked,
+                        onResetBoard = onResetBoard,
+                        onAssistedSideChanged = onAssistedSideChanged,
+                        onCopyFenClicked = onCopyFenClicked,
+                        onPasteFenClicked = onPasteFen,
+                        onEnterConfigMode = onEnterConfigMode,
+                    )
+                }
             }
         }
         } // end else (not showing close confirmation)
@@ -388,20 +432,24 @@ private fun ExpandedOverlayHeader(
     ) {
         Surface(
             shape = RoundedCornerShape(999.dp),
-            color = OverlaySurfaceColor,
+            color = if (uiState.isConfigMode) ConfigModeAccent.copy(alpha = 0.3f) else OverlaySurfaceColor,
         ) {
             Text(
-                text = if (uiState.isCheckmate) "Checkmate" else "${uiState.sideToMove.displayName} to move",
+                text = when {
+                    uiState.isConfigMode -> "⚙ Board Setup"
+                    uiState.isCheckmate -> "Checkmate"
+                    else -> "${uiState.sideToMove.displayName} to move"
+                },
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
+                color = if (uiState.isConfigMode) ConfigModeAccent else Color.White,
             )
         }
         Text(
-            text = uiState.compactStatusText,
+            text = if (uiState.isConfigMode) "Tap piece, then tap destination" else uiState.compactStatusText,
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall,
-            color = OverlaySecondaryText,
+            color = if (uiState.isConfigMode) ConfigModeAccent.copy(alpha = 0.7f) else OverlaySecondaryText,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             WindowActionButton(symbol = "—", contentDescription = "Minimize overlay", onClick = onTogglePanelMode)
@@ -423,6 +471,7 @@ private fun OverlayDetailStack(
     onAssistedSideChanged: (Side) -> Unit,
     onCopyFenClicked: () -> Unit,
     onPasteFenClicked: () -> Unit,
+    onEnterConfigMode: () -> Unit,
 ) {
     val shouldShowBanner =
         uiState.gameStatus != GameStatus.NORMAL ||
@@ -432,7 +481,10 @@ private fun OverlayDetailStack(
             uiState.recommendationError != null
 
     if (shouldShowBanner) {
-        RecommendationBanner(uiState = uiState)
+        RecommendationBanner(
+            uiState = uiState,
+            onResetBoard = onResetBoard,
+        )
     }
     if (uiState.isMoveHistoryExpanded && uiState.moveHistory.isNotEmpty()) {
         MoveHistoryPanel(movePairs = uiState.moveHistory.chunked(2))
@@ -448,6 +500,7 @@ private fun OverlayDetailStack(
         onAssistedSideChanged = onAssistedSideChanged,
         onCopyFenClicked = onCopyFenClicked,
         onPasteFenClicked = onPasteFenClicked,
+        onEnterConfigMode = onEnterConfigMode,
     )
 }
 
@@ -505,7 +558,10 @@ private fun MoveHistoryPanel(movePairs: List<List<MoveRecord>>) {
 }
 
 @Composable
-private fun RecommendationBanner(uiState: OverlayBoardUiState) {
+private fun RecommendationBanner(
+    uiState: OverlayBoardUiState,
+    onResetBoard: () -> Unit,
+) {
     val containerColor = when {
         uiState.gameStatus == GameStatus.CHECKMATE -> Color(0xB3DC2626)
         uiState.gameStatus == GameStatus.STALEMATE -> Color(0xB3475563)
@@ -522,12 +578,159 @@ private fun RecommendationBanner(uiState: OverlayBoardUiState) {
         color = containerColor,
         shape = RoundedCornerShape(14.dp),
     ) {
+        if (uiState.isCheckmate) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Checkmate",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = textColor,
+                )
+                TextButton(onClick = onResetBoard) {
+                    Text("New Game", color = Color.White)
+                }
+            }
+        } else {
+            Text(
+                text = uiState.recommendationBannerText,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = textColor,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfigModeControls(
+    uiState: OverlayBoardUiState,
+    onExitConfigMode: () -> Unit,
+    onConfigUndo: () -> Unit,
+    onConfigRedo: () -> Unit,
+    onConfigClearBoard: () -> Unit,
+    onConfigResetToStart: () -> Unit,
+    onConfigToggleSideToMove: () -> Unit,
+) {
+    // "Board Setup" accent banner
+    Surface(
+        color = ConfigModeAccent.copy(alpha = 0.18f),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            // Side-to-move toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "Next to move:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OverlaySecondaryText,
+                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = OverlaySurfaceColor,
+                    onClick = onConfigToggleSideToMove,
+                ) {
+                    Text(
+                        text = uiState.configSideToMove.displayName,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                    )
+                }
+            }
+
+            // Action buttons row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                ConfigActionButton(
+                    text = "↩",
+                    label = "Undo",
+                    enabled = uiState.configUndoStack.isNotEmpty(),
+                    onClick = onConfigUndo,
+                )
+                ConfigActionButton(
+                    text = "↪",
+                    label = "Redo",
+                    enabled = uiState.configRedoStack.isNotEmpty(),
+                    onClick = onConfigRedo,
+                )
+                ConfigActionButton(
+                    text = "⊘",
+                    label = "Clear",
+                    onClick = onConfigClearBoard,
+                )
+                ConfigActionButton(
+                    text = "⟲",
+                    label = "Reset",
+                    onClick = onConfigResetToStart,
+                )
+            }
+        }
+    }
+
+    // Done button
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = ConfigModeAccent,
+        onClick = onExitConfigMode,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Text(
-            text = uiState.recommendationBannerText,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = if (uiState.isCheckmate) 12.dp else 10.dp),
-            style = if (uiState.isCheckmate) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall,
-            color = textColor,
+            text = "✓  Done — Set board",
+            modifier = Modifier
+                .padding(vertical = 12.dp)
+                .fillMaxWidth(),
+            style = MaterialTheme.typography.titleSmall,
+            color = Color(0xFF1A1200),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun ConfigActionButton(
+    text: String,
+    label: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = if (enabled) OverlaySurfaceColor else OverlaySurfaceColor.copy(alpha = 0.4f),
+        onClick = onClick,
+        enabled = enabled,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (enabled) Color.White else Color.White.copy(alpha = 0.4f),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (enabled) OverlaySecondaryText else OverlaySecondaryText.copy(alpha = 0.4f),
+            )
+        }
     }
 }
 

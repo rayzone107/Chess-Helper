@@ -241,7 +241,7 @@ class OverlayBoardViewModelTest {
 
         assertEquals(GameStatus.CHECKMATE, viewModel.uiState.gameStatus)
         assertEquals("h8", viewModel.uiState.checkedKingSquare)
-        assertEquals("Checkmate • Game over", viewModel.uiState.compactStatusText)
+        assertEquals("Game over", viewModel.uiState.compactStatusText)
         assertFalse(viewModel.uiState.canRecommend)
     }
 

@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +29,7 @@ import java.util.Locale
 fun MatchHistoryContent(
     matches: List<MatchRecord>,
     onMatchSelected: (MatchRecord) -> Unit,
+    onResumeMatch: (MatchRecord) -> Unit = {},
 ) {
     if (matches.isEmpty()) {
         Column(
@@ -54,7 +57,11 @@ fun MatchHistoryContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(matches, key = { it.id }) { match ->
-                MatchCard(match = match, onClick = { onMatchSelected(match) })
+                MatchCard(
+                    match = match,
+                    onClick = { onMatchSelected(match) },
+                    onResume = { onResumeMatch(match) },
+                )
             }
         }
     }
@@ -64,6 +71,7 @@ fun MatchHistoryContent(
 private fun MatchCard(
     match: MatchRecord,
     onClick: () -> Unit,
+    onResume: () -> Unit,
 ) {
     val dateFormat = SimpleDateFormat("MMM d, yyyy  h:mm a", Locale.getDefault())
     val dateStr = dateFormat.format(Date(match.timestampMillis))
@@ -102,11 +110,26 @@ private fun MatchCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text = "Played as ${match.assistedSide.displayName}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Played as ${match.assistedSide.displayName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+                FilledTonalButton(
+                    onClick = onResume,
+                    modifier = Modifier.size(height = 32.dp, width = 110.dp),
+                ) {
+                    Text(
+                        text = "Resume",
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
         }
     }
 }

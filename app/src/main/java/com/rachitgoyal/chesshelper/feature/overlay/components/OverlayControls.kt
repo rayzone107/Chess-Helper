@@ -41,6 +41,7 @@ fun OverlayControls(
     onAssistedSideChanged: (Side) -> Unit,
     onCopyFenClicked: () -> Unit,
     onPasteFenClicked: () -> Unit,
+    onEnterConfigMode: () -> Unit = {},
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -135,6 +136,13 @@ fun OverlayControls(
                     onClick = {
                         menuExpanded = false
                         onPasteFenClicked()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Board setup") },
+                    onClick = {
+                        menuExpanded = false
+                        onEnterConfigMode()
                     },
                 )
                 DropdownMenuItem(

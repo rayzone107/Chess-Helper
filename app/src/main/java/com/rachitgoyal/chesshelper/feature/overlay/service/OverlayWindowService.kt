@@ -38,6 +38,16 @@ class OverlayWindowService : LifecycleService() {
                 START_STICKY
             }
 
+            ACTION_RESUME_GAME -> {
+                val matchId = intent?.getStringExtra(EXTRA_MATCH_ID)
+                startForegroundCompat()
+                overlayWindowHost?.show()
+                if (matchId != null) {
+                    overlayWindowHost?.resumeGame(matchId)
+                }
+                START_STICKY
+            }
+
             ACTION_HIDE_OVERLAY -> {
                 stopOverlayAndSelf()
                 START_NOT_STICKY
@@ -113,12 +123,18 @@ class OverlayWindowService : LifecycleService() {
     companion object {
         const val ACTION_SHOW_OVERLAY = "com.rachitgoyal.chesshelper.action.SHOW_OVERLAY"
         const val ACTION_HIDE_OVERLAY = "com.rachitgoyal.chesshelper.action.HIDE_OVERLAY"
+        const val ACTION_RESUME_GAME = "com.rachitgoyal.chesshelper.action.RESUME_GAME"
+        const val EXTRA_MATCH_ID = "extra_match_id"
 
         private const val CHANNEL_ID = "chess_overlay_window"
         private const val NOTIFICATION_ID = 7
 
         fun createIntent(context: android.content.Context, action: String): Intent {
             return Intent(context, OverlayWindowService::class.java).setAction(action)
+        }
+
+        fun createResumeIntent(context: android.content.Context, matchId: String): Intent {
+            return createIntent(context, ACTION_RESUME_GAME).putExtra(EXTRA_MATCH_ID, matchId)
         }
 
         fun overlaySettingsIntent(packageName: String): Intent {

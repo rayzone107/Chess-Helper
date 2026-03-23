@@ -121,3 +121,34 @@
     and reload it when navigating to the history screen.
   file_refs:
     - /Users/rachit/AndroidStudioProjects/ChessHelper/app/src/main/java/com/rachitgoyal/chesshelper/ui/app/ChessHelperApp.kt
+- id: review-overlay-panel-007
+  status: open
+  severity: medium
+  problem: >-
+    The new checkmate treatment is not yet as compact or clear as intended because the same state is
+    now repeated across three places in `OverlayPanel.kt`: the header title switches to `Checkmate`,
+    the header subtitle still shows `Checkmate • Game over`, and the new red banner also says
+    `Checkmate` with the adjacent reset CTA. In practice that makes the banner less effective as the
+    focal status/action row and adds avoidable noise in the narrow expanded panel layout.
+  required_change: >-
+    Let the red banner own the terminal checkmate message + inline reset action, and remove the extra
+    duplicate checkmate copy from the header chrome when that banner is visible. The expanded panel
+    should show one clear checkmate status row instead of repeating the same label in the header and
+    again in the banner.
+  file_refs:
+    - /Users/rachit/AndroidStudioProjects/ChessHelper/app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt
+    - /Users/rachit/AndroidStudioProjects/ChessHelper/docs/chess-overlay-assistant/plan.md
+- id: review-overlay-panel-008
+  status: open
+  severity: low
+  problem: >-
+    `RecommendationBanner(...)` now owns the checkmate reset action via `onResetBoard`, so the
+    composable is no longer only a recommendation-status renderer. That naming/responsibility drift is
+    small, but it makes the overlay harder to reason about because a game-lifecycle CTA is threaded
+    through a component that reads as recommendation-only.
+  required_change: >-
+    Rename or split the composable so the terminal-state banner/reset action is represented as a
+    generic status banner (or a dedicated checkmate banner) instead of extending a recommendation-only
+    component with unrelated lifecycle behavior.
+  file_refs:
+    - /Users/rachit/AndroidStudioProjects/ChessHelper/app/src/main/java/com/rachitgoyal/chesshelper/feature/overlay/components/OverlayPanel.kt

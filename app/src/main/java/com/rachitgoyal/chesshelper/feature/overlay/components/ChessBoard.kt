@@ -43,17 +43,23 @@ fun ChessBoard(
     onSquareTapped: (String) -> Unit,
     modifier: Modifier = Modifier,
     boardTheme: BoardTheme = BoardTheme.CLASSIC,
+    isConfigMode: Boolean = false,
 ) {
     val ranks = if (bottomSide == Side.WHITE) (7 downTo 0).toList() else (0..7).toList()
     val files = if (bottomSide == Side.WHITE) (0..7).toList() else (7 downTo 0).toList()
     val squareAlpha = 0.72f
+    val configBorderColor = Color(0xFFF59E0B)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(18.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(18.dp)),
+            .border(
+                width = if (isConfigMode) 2.dp else 1.dp,
+                color = if (isConfigMode) configBorderColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(18.dp),
+            ),
     ) {
         Column(modifier = Modifier.matchParentSize()) {
             for (rank in ranks) {

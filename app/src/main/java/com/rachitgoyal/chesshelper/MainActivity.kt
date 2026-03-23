@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
                     onLaunchOverlay = ::launchOverlay,
                     onStopOverlay = ::stopOverlay,
                     onOpenOverlaySettings = ::openOverlaySettings,
+                    onResumeMatchInOverlay = ::resumeMatchInOverlay,
                 )
             }
         }
@@ -77,6 +78,16 @@ class MainActivity : ComponentActivity() {
 
     private fun startOverlayServiceAndBackground() {
         startForegroundService(this, OverlayWindowService.createIntent(this, OverlayWindowService.ACTION_SHOW_OVERLAY))
+        moveTaskToBack(true)
+    }
+
+    private fun resumeMatchInOverlay(matchId: String) {
+        if (!overlayPermissionGranted) {
+            pendingOverlayLaunch = true
+            openOverlaySettings()
+            return
+        }
+        startForegroundService(this, OverlayWindowService.createResumeIntent(this, matchId))
         moveTaskToBack(true)
     }
 }

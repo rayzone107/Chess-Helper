@@ -29,7 +29,10 @@ fun OverlayWindowContent(
 
     OverlayWindowCard(
         uiState = uiState,
-        onSquareTapped = viewModel::onSquareTapped,
+        onSquareTapped = { squareId ->
+            if (uiState.isConfigMode) viewModel.onConfigSquareTapped(squareId)
+            else viewModel.onSquareTapped(squareId)
+        },
         onRecommendClicked = viewModel::onRecommendClicked,
         onApplyRecommendationClicked = viewModel::onApplyRecommendationClicked,
         onUndoClicked = viewModel::onUndoClicked,
@@ -43,6 +46,13 @@ fun OverlayWindowContent(
         onSoundEventConsumed = viewModel::onSoundEventConsumed,
         onLoadFen = viewModel::onLoadFen,
         onFenLoadErrorConsumed = viewModel::onFenLoadErrorConsumed,
+        onEnterConfigMode = viewModel::onEnterConfigMode,
+        onExitConfigMode = viewModel::onExitConfigMode,
+        onConfigUndo = viewModel::onConfigUndo,
+        onConfigRedo = viewModel::onConfigRedo,
+        onConfigClearBoard = viewModel::onConfigClearBoard,
+        onConfigResetToStart = viewModel::onConfigResetToStart,
+        onConfigToggleSideToMove = viewModel::onConfigToggleSideToMove,
         dragHandleModifier = dragModifier,
         onCloseOverlay = { viewModel.saveAndClose(onRequestClose) },
     )

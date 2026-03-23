@@ -62,6 +62,24 @@ data class OverlayBoardUiState(
     val enableSoundEffects: Boolean = false,
     /** One-shot error message from a failed FEN load; consumed by the UI layer. */
     val fenLoadError: String? = null,
+
+    // ---- Config (board-setup) mode ----
+    /** True while the user is freely arranging pieces on the board. */
+    val isConfigMode: Boolean = false,
+    /** Board snapshot selected in config mode (square id). */
+    val configSelectedSquare: String? = null,
+    /** Undo stack of board snapshots during config mode. */
+    val configUndoStack: List<Map<String, Piece>> = emptyList(),
+    /** Redo stack of board snapshots during config mode. */
+    val configRedoStack: List<Map<String, Piece>> = emptyList(),
+    /** Which side will move once config mode is exited. */
+    val configSideToMove: Side = Side.WHITE,
+
+    // ---- Opacity ----
+    /** Overall overlay opacity (0.2–1.0). Cascades to the board as well. */
+    val overlayOpacity: Float = 1f,
+    /** Additional board opacity (0.2–1.0), multiplied with overlay opacity. */
+    val boardOpacity: Float = 1f,
 ) {
     val isGameOver: Boolean
         get() = gameStatus.isTerminal
@@ -82,6 +100,7 @@ data class OverlayBoardUiState(
     val canRecommend: Boolean
         get() =
             panelMode == PanelMode.EXPANDED &&
+                !isConfigMode &&
                 recommendationState != RecommendationState.LOADING &&
                 sideToMove == assistedSide &&
                 (moveHistory.isNotEmpty() || assistedSide == Side.WHITE) &&
@@ -98,7 +117,7 @@ data class OverlayBoardUiState(
             return when {
                 recommendationState == RecommendationState.ERROR && recommendationError != null -> recommendationError
                 activeMove != null && recommendationSummary != null -> recommendationSummary
-                gameStatus == GameStatus.CHECKMATE -> "Checkmate — game over. No legal moves remain."
+                gameStatus == GameStatus.CHECKMATE -> "Checkmate"
                 gameStatus == GameStatus.STALEMATE -> "Stalemate — game over."
                 gameStatus == GameStatus.CHECK -> "Check"
                 recommendationState == RecommendationState.LOADING -> "Analyzing…"
@@ -114,7 +133,7 @@ data class OverlayBoardUiState(
             val activeMove = activeRecommendedMove
             val statusLabel = recommendationStatusLabel
             return when {
-                gameStatus == GameStatus.CHECKMATE -> "Checkmate • Game over"
+                gameStatus == GameStatus.CHECKMATE -> "Game over"
                 gameStatus == GameStatus.STALEMATE -> "Stalemate • Game over"
                 gameStatus == GameStatus.CHECK && recommendationState == RecommendationState.LOADING -> "Check • Analyzing…"
                 gameStatus == GameStatus.CHECK && activeMove != null -> "Check • Best: ${activeMove.notation}"

@@ -73,6 +73,7 @@ fun ChessHelperApp(
     onLaunchOverlay: () -> Unit,
     onStopOverlay: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
+    onResumeMatchInOverlay: (String) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -135,6 +136,9 @@ fun ChessHelperApp(
                     matches = matchHistoryRepository.loadAll(),
                     onMatchSelected = { match ->
                         navController.navigate(Routes.matchReplay(match.id))
+                    },
+                    onResumeMatch = { match ->
+                        onResumeMatchInOverlay(match.id)
                     },
                 )
             }

@@ -10,12 +10,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import com.rachitgoyal.chesshelper.data.MatchHistoryRepository
+import com.rachitgoyal.chesshelper.domain.chess.ChessRules
+import com.rachitgoyal.chesshelper.domain.chess.FenParser
 import com.rachitgoyal.chesshelper.domain.chess.ChessGameStore
 import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
 import com.rachitgoyal.chesshelper.domain.chess.model.GameSnapshot
 import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.domain.chess.model.MatchRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.MatchResult
+import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
@@ -55,6 +58,8 @@ class OverlayBoardViewModel(
             enableHapticFeedback = appSettings?.enableHapticFeedback ?: true,
             boardTheme = appSettings?.boardTheme ?: BoardTheme.CLASSIC,
             enableSoundEffects = appSettings?.enableSoundEffects ?: false,
+            overlayOpacity = appSettings?.overlayOpacity ?: 1f,
+            boardOpacity = appSettings?.boardOpacity ?: 1f,
         )
     }
 
@@ -95,9 +100,9 @@ class OverlayBoardViewModel(
     }
 
     fun togglePanelMode() {
-        uiState = uiState.copy(
-            panelMode = if (uiState.panelMode == PanelMode.EXPANDED) PanelMode.MINIMIZED else PanelMode.EXPANDED,
-        )
+        val nextMode = if (uiState.panelMode == PanelMode.EXPANDED) PanelMode.MINIMIZED else PanelMode.EXPANDED
+        if (nextMode == PanelMode.EXPANDED) refreshOpacity()
+        uiState = uiState.copy(panelMode = nextMode)
     }
 
     fun toggleMoveHistoryExpanded() {
@@ -212,6 +217,155 @@ class OverlayBoardViewModel(
         uiState = uiState.copy(isMoveHistoryExpanded = false)
         gameSaved = false
         startingFen = null
+    }
+
+    // ---- Resume game from history ----
+
+    fun onResumeGame(match: MatchRecord) {
+        saveCurrentGame()
+        val startPos = match.startingFen?.let { FenParser.parse(it).getOrNull() }
+            ?: ChessRules.initialPosition()
+        store.loadGame(startPos, match.moves)
+        recommendationRequestVersion += 1
+        syncFromStore(
+            recommendation = null,
+            recommendationState = RecommendationState.IDLE,
+            isRecommendationStale = false,
+            recommendationStatusLabel = null,
+            recommendationError = null,
+        )
+        uiState = uiState.copy(
+            assistedSide = match.assistedSide,
+            isMoveHistoryExpanded = false,
+        )
+        gameSaved = false
+        startingFen = match.startingFen
+    }
+
+    // ---- Config (board-setup) mode ----
+
+    fun onEnterConfigMode() {
+        uiState = uiState.copy(
+            isConfigMode = true,
+            configSelectedSquare = null,
+            configUndoStack = emptyList(),
+            configRedoStack = emptyList(),
+            configSideToMove = uiState.sideToMove,
+        )
+    }
+
+    fun onExitConfigMode() {
+        val board = uiState.board
+        val sideToMove = uiState.configSideToMove
+        store.loadBoard(board, sideToMove)
+        recommendationRequestVersion += 1
+        uiState = uiState.copy(
+            isConfigMode = false,
+            configSelectedSquare = null,
+            configUndoStack = emptyList(),
+            configRedoStack = emptyList(),
+        )
+        syncFromStore(
+            recommendation = null,
+            recommendationState = RecommendationState.IDLE,
+            isRecommendationStale = false,
+            recommendationStatusLabel = null,
+            recommendationError = null,
+        )
+        gameSaved = false
+        startingFen = uiState.currentFen
+    }
+
+    fun onConfigSquareTapped(squareId: String) {
+        val selected = uiState.configSelectedSquare
+        val board = uiState.board.toMutableMap()
+
+        if (selected == null) {
+            // Pick up: select if there's a piece
+            if (board.containsKey(squareId)) {
+                uiState = uiState.copy(configSelectedSquare = squareId)
+            }
+            return
+        }
+
+        if (selected == squareId) {
+            // Deselect
+            uiState = uiState.copy(configSelectedSquare = null)
+            return
+        }
+
+        // Move piece from selected to tapped square
+        val piece = board[selected] ?: run {
+            uiState = uiState.copy(configSelectedSquare = null)
+            return
+        }
+        val previousBoard = uiState.board
+        board.remove(selected)
+        board[squareId] = piece
+        uiState = uiState.copy(
+            board = board,
+            configSelectedSquare = null,
+            configUndoStack = uiState.configUndoStack + listOf(previousBoard),
+            configRedoStack = emptyList(),
+        )
+    }
+
+    fun onConfigUndo() {
+        val stack = uiState.configUndoStack
+        if (stack.isEmpty()) return
+        val previousBoard = stack.last()
+        uiState = uiState.copy(
+            board = previousBoard,
+            configUndoStack = stack.dropLast(1),
+            configRedoStack = uiState.configRedoStack + listOf(uiState.board),
+            configSelectedSquare = null,
+        )
+    }
+
+    fun onConfigRedo() {
+        val stack = uiState.configRedoStack
+        if (stack.isEmpty()) return
+        val nextBoard = stack.last()
+        uiState = uiState.copy(
+            board = nextBoard,
+            configRedoStack = stack.dropLast(1),
+            configUndoStack = uiState.configUndoStack + listOf(uiState.board),
+            configSelectedSquare = null,
+        )
+    }
+
+    fun onConfigClearBoard() {
+        val previousBoard = uiState.board
+        uiState = uiState.copy(
+            board = emptyMap(),
+            configSelectedSquare = null,
+            configUndoStack = uiState.configUndoStack + listOf(previousBoard),
+            configRedoStack = emptyList(),
+        )
+    }
+
+    fun onConfigResetToStart() {
+        val previousBoard = uiState.board
+        uiState = uiState.copy(
+            board = ChessRules.initialPosition().board,
+            configSelectedSquare = null,
+            configUndoStack = uiState.configUndoStack + listOf(previousBoard),
+            configRedoStack = emptyList(),
+        )
+    }
+
+    fun onConfigToggleSideToMove() {
+        uiState = uiState.copy(
+            configSideToMove = uiState.configSideToMove.opposite(),
+        )
+    }
+
+    /** Re-reads opacity settings (call when overlay becomes visible). */
+    fun refreshOpacity() {
+        uiState = uiState.copy(
+            overlayOpacity = appSettings?.overlayOpacity ?: 1f,
+            boardOpacity = appSettings?.boardOpacity ?: 1f,
+        )
     }
 
     fun onAssistedSideChanged(side: Side) {

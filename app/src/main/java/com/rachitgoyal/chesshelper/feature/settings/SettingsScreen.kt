@@ -12,15 +12,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
 import com.rachitgoyal.chesshelper.settings.AppSettings
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsContent(
@@ -39,10 +44,13 @@ fun SettingsContent(
     var hapticFeedback by remember { mutableStateOf(appSettings.enableHapticFeedback) }
     var boardTheme by remember { mutableStateOf(appSettings.boardTheme) }
     var soundEffects by remember { mutableStateOf(appSettings.enableSoundEffects) }
+    var overlayOpacity by remember { mutableFloatStateOf(appSettings.overlayOpacity) }
+    var boardOpacity by remember { mutableFloatStateOf(appSettings.boardOpacity) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -201,6 +209,92 @@ fun SettingsContent(
                         soundEffects = checked
                         appSettings.enableSoundEffects = checked
                     },
+                )
+            }
+        }
+
+        // Overlay opacity slider
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Overlay opacity",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "${(overlayOpacity * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Text(
+                    text = "Controls the transparency of the entire overlay panel, including the board.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Slider(
+                    value = overlayOpacity,
+                    onValueChange = { overlayOpacity = it },
+                    onValueChangeFinished = { appSettings.overlayOpacity = overlayOpacity },
+                    valueRange = 0.2f..1f,
+                )
+            }
+        }
+
+        // Board opacity slider
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Board opacity",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "${(boardOpacity * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Text(
+                    text = "Additional opacity applied to the chess board. Cascades with overlay opacity (e.g. 50% × 50% = 25%).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Slider(
+                    value = boardOpacity,
+                    onValueChange = { boardOpacity = it },
+                    onValueChangeFinished = { appSettings.boardOpacity = boardOpacity },
+                    valueRange = 0.2f..1f,
                 )
             }
         }

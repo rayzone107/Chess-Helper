@@ -35,11 +35,23 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_SOUND, false)
         set(value) { prefs.edit().putBoolean(KEY_SOUND, value).apply() }
 
+    /** Overlay-wide opacity (0.2–1.0). Cascades to board. */
+    var overlayOpacity: Float
+        get() = prefs.getFloat(KEY_OVERLAY_OPACITY, 1f)
+        set(value) { prefs.edit().putFloat(KEY_OVERLAY_OPACITY, value.coerceIn(0.2f, 1f)).apply() }
+
+    /** Board-only opacity (0.2–1.0). Multiplied with overlay opacity for the final board alpha. */
+    var boardOpacity: Float
+        get() = prefs.getFloat(KEY_BOARD_OPACITY, 1f)
+        set(value) { prefs.edit().putFloat(KEY_BOARD_OPACITY, value.coerceIn(0.2f, 1f)).apply() }
+
     companion object {
         private const val PREFS_NAME = "chess_helper_settings"
         private const val KEY_AUTO_APPLY = "auto_apply_best_move"
         private const val KEY_HAPTIC = "enable_haptic_feedback"
         private const val KEY_BOARD_THEME = "board_theme"
         private const val KEY_SOUND = "enable_sound_effects"
+        private const val KEY_OVERLAY_OPACITY = "overlay_opacity"
+        private const val KEY_BOARD_OPACITY = "board_opacity"
     }
 }

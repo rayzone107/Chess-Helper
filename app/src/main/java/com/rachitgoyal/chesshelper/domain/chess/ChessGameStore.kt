@@ -3,6 +3,8 @@ package com.rachitgoyal.chesshelper.domain.chess
 import com.rachitgoyal.chesshelper.domain.chess.model.ChessPosition
 import com.rachitgoyal.chesshelper.domain.chess.model.GameSnapshot
 import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
+import com.rachitgoyal.chesshelper.domain.chess.model.Piece
+import com.rachitgoyal.chesshelper.domain.chess.model.Side
 
 class ChessGameStore(
     initialPosition: ChessPosition = ChessRules.initialPosition(),
@@ -93,6 +95,33 @@ class ChessGameStore(
             clearSelection()
         }
         return result.map { }
+    }
+
+    /**
+     * Loads a game from a starting position and replays the given moves,
+     * building up the full undo history so each move can be undone.
+     */
+    fun loadGame(startingPosition: ChessPosition, moves: List<MoveRecord>) {
+        position = startingPosition
+        previousPositions.clear()
+        moveHistory.clear()
+        clearSelection()
+        for (move in moves) {
+            previousPositions += position
+            moveHistory += move
+            position = ChessRules.applyMove(position, move)
+        }
+    }
+
+    /**
+     * Directly sets the board to the given map of pieces plus side-to-move.
+     * Clears all history. Used when exiting config mode.
+     */
+    fun loadBoard(board: Map<String, Piece>, sideToMove: Side) {
+        position = ChessPosition(board = board, sideToMove = sideToMove)
+        previousPositions.clear()
+        moveHistory.clear()
+        clearSelection()
     }
 
     private fun selectSquare(square: String) {
