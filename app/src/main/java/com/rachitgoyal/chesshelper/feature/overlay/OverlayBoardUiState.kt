@@ -74,6 +74,14 @@ data class OverlayBoardUiState(
     val configRedoStack: List<Map<String, Piece>> = emptyList(),
     /** Which side will move once config mode is exited. */
     val configSideToMove: Side = Side.WHITE,
+    /** Board snapshot captured when board setup was entered. */
+    val configEntryBoard: Map<String, Piece>? = null,
+    /** Side-to-move captured when board setup was entered. */
+    val configEntrySideToMove: Side = Side.WHITE,
+    /** Piece type selected from the catalog to place on the board. Null = move mode. */
+    val configCatalogPiece: Piece? = null,
+    /** Validation error shown when "Done" is tapped with an invalid position. */
+    val configValidationError: String? = null,
 
     // ---- Opacity ----
     /** Overall overlay opacity (0.2–1.0). Cascades to the board as well. */
@@ -109,6 +117,12 @@ data class OverlayBoardUiState(
 
     val canApplyRecommendation: Boolean
         get() = panelMode == PanelMode.EXPANDED && activeRecommendedMove != null && sideToMove == assistedSide
+
+    val hasConfigChanges: Boolean
+        get() =
+            isConfigMode &&
+                configEntryBoard != null &&
+                (board != configEntryBoard || configSideToMove != configEntrySideToMove)
 
     val recommendationBannerText: String
         get() {

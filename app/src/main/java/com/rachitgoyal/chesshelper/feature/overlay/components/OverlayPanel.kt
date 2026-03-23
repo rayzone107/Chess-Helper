@@ -4,13 +4,16 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.res.Configuration
 import android.widget.Toast
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -54,19 +57,22 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.rachitgoyal.chesshelper.domain.chess.model.MoveRecord
+import com.rachitgoyal.chesshelper.domain.chess.model.Piece
+import com.rachitgoyal.chesshelper.domain.chess.model.PieceType
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.feature.overlay.BoardHapticEvent
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayBoardUiState
 import com.rachitgoyal.chesshelper.feature.overlay.PanelMode
 
-private val OverlayCardColor = Color(0xCC0F172A)
-private val OverlaySurfaceColor = Color(0xB31E293B)
-private val OverlayDividerColor = Color(0x801E293B)
+private val OverlayCardColor = Color(0xFF0F172A)
+private val OverlaySurfaceColor = Color(0xFF1E293B)
+private val OverlayDividerColor = Color(0xFF334155)
 private val OverlaySecondaryText = Color(0xFFCBD5E1)
 private val ConfigModeAccent = Color(0xFFF59E0B)
-private val ConfigModeCardColor = Color(0xCC3B2300)
+private val ConfigModeCardColor = Color(0xFF3B2300)
 
 @Composable
 fun OverlayPanel(
@@ -151,11 +157,15 @@ fun OverlayWindowCard(
     onFenLoadErrorConsumed: () -> Unit,
     onEnterConfigMode: () -> Unit = {},
     onExitConfigMode: () -> Unit = {},
+    onDiscardConfigChanges: () -> Unit = {},
     onConfigUndo: () -> Unit = {},
     onConfigRedo: () -> Unit = {},
+    onConfigRemoveSelected: () -> Unit = {},
     onConfigClearBoard: () -> Unit = {},
     onConfigResetToStart: () -> Unit = {},
     onConfigToggleSideToMove: () -> Unit = {},
+    onConfigSelectCatalogPiece: (Piece?) -> Unit = {},
+    onConfigDismissValidationError: () -> Unit = {},
     modifier: Modifier = Modifier,
     onCloseOverlay: (() -> Unit)? = null,
 ) {
@@ -312,11 +322,15 @@ fun OverlayWindowCard(
                         ConfigModeControls(
                             uiState = uiState,
                             onExitConfigMode = onExitConfigMode,
+                            onDiscardConfigChanges = onDiscardConfigChanges,
                             onConfigUndo = onConfigUndo,
                             onConfigRedo = onConfigRedo,
+                            onConfigRemoveSelected = onConfigRemoveSelected,
                             onConfigClearBoard = onConfigClearBoard,
                             onConfigResetToStart = onConfigResetToStart,
                             onConfigToggleSideToMove = onConfigToggleSideToMove,
+                            onConfigSelectCatalogPiece = onConfigSelectCatalogPiece,
+                            onConfigDismissValidationError = onConfigDismissValidationError,
                         )
                     } else {
                         OverlayDetailStack(
@@ -362,11 +376,15 @@ fun OverlayWindowCard(
                     ConfigModeControls(
                         uiState = uiState,
                         onExitConfigMode = onExitConfigMode,
+                        onDiscardConfigChanges = onDiscardConfigChanges,
                         onConfigUndo = onConfigUndo,
                         onConfigRedo = onConfigRedo,
+                        onConfigRemoveSelected = onConfigRemoveSelected,
                         onConfigClearBoard = onConfigClearBoard,
                         onConfigResetToStart = onConfigResetToStart,
                         onConfigToggleSideToMove = onConfigToggleSideToMove,
+                        onConfigSelectCatalogPiece = onConfigSelectCatalogPiece,
+                        onConfigDismissValidationError = onConfigDismissValidationError,
                     )
                 } else {
                     OverlayDetailStack(
@@ -563,10 +581,10 @@ private fun RecommendationBanner(
     onResetBoard: () -> Unit,
 ) {
     val containerColor = when {
-        uiState.gameStatus == GameStatus.CHECKMATE -> Color(0xB3DC2626)
-        uiState.gameStatus == GameStatus.STALEMATE -> Color(0xB3475563)
-        uiState.isRecommendationBannerError -> Color(0xB37F1D1D)
-        uiState.gameStatus == GameStatus.CHECK -> Color(0xB37C2D12)
+        uiState.gameStatus == GameStatus.CHECKMATE -> Color(0xFFDC2626)
+        uiState.gameStatus == GameStatus.STALEMATE -> Color(0xFF475569)
+        uiState.isRecommendationBannerError -> Color(0xFF7F1D1D)
+        uiState.gameStatus == GameStatus.CHECK -> Color(0xFF7C2D12)
         else -> OverlaySurfaceColor
     }
     val textColor = when {
@@ -611,13 +629,87 @@ private fun RecommendationBanner(
 private fun ConfigModeControls(
     uiState: OverlayBoardUiState,
     onExitConfigMode: () -> Unit,
+    onDiscardConfigChanges: () -> Unit,
     onConfigUndo: () -> Unit,
     onConfigRedo: () -> Unit,
+    onConfigRemoveSelected: () -> Unit,
     onConfigClearBoard: () -> Unit,
     onConfigResetToStart: () -> Unit,
     onConfigToggleSideToMove: () -> Unit,
+    onConfigSelectCatalogPiece: (Piece?) -> Unit,
+    onConfigDismissValidationError: () -> Unit,
 ) {
-    // "Board Setup" accent banner
+    var showDiscardConfirmation by remember(uiState.hasConfigChanges) { mutableStateOf(false) }
+
+    // Validation error
+    if (uiState.configValidationError != null) {
+        Surface(
+            color = Color(0xFFDC2626),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = uiState.configValidationError,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White,
+                )
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color.White.copy(alpha = 0.2f),
+                    onClick = onConfigDismissValidationError,
+                ) {
+                    Text(
+                        "✕",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        }
+    }
+
+    if (uiState.hasConfigChanges && showDiscardConfirmation) {
+        Surface(
+            color = Color(0xFF7F1D1D),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "Discard all board setup changes and restore the original position?",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = { showDiscardConfirmation = false }) {
+                        Text("Keep editing", color = Color.White)
+                    }
+                    TextButton(onClick = {
+                        showDiscardConfirmation = false
+                        onDiscardConfigChanges()
+                    }) {
+                        Text("Discard", color = Color(0xFFFCA5A5))
+                    }
+                }
+            }
+        }
+    }
+
     Surface(
         color = ConfigModeAccent.copy(alpha = 0.18f),
         shape = RoundedCornerShape(14.dp),
@@ -625,17 +717,16 @@ private fun ConfigModeControls(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             // Side-to-move toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "Next to move:",
+                    text = "Next:",
                     style = MaterialTheme.typography.bodySmall,
                     color = OverlaySecondaryText,
                 )
@@ -643,6 +734,7 @@ private fun ConfigModeControls(
                     shape = RoundedCornerShape(8.dp),
                     color = OverlaySurfaceColor,
                     onClick = onConfigToggleSideToMove,
+                    modifier = Modifier.padding(start = 6.dp),
                 ) {
                     Text(
                         text = uiState.configSideToMove.displayName,
@@ -653,82 +745,175 @@ private fun ConfigModeControls(
                 }
             }
 
-            // Action buttons row
+            // Action buttons — evenly distributed, icon + label
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                ConfigActionButton(
-                    text = "↩",
-                    label = "Undo",
-                    enabled = uiState.configUndoStack.isNotEmpty(),
-                    onClick = onConfigUndo,
-                )
-                ConfigActionButton(
-                    text = "↪",
-                    label = "Redo",
-                    enabled = uiState.configRedoStack.isNotEmpty(),
-                    onClick = onConfigRedo,
-                )
-                ConfigActionButton(
-                    text = "⊘",
-                    label = "Clear",
-                    onClick = onConfigClearBoard,
-                )
-                ConfigActionButton(
-                    text = "⟲",
-                    label = "Reset",
-                    onClick = onConfigResetToStart,
-                )
+                ConfigActionButton("↩", "Undo", uiState.configUndoStack.isNotEmpty(), onConfigUndo, Modifier.weight(1f))
+                ConfigActionButton("↪", "Redo", uiState.configRedoStack.isNotEmpty(), onConfigRedo, Modifier.weight(1f))
+                ConfigActionButton("✕", "Remove", uiState.configSelectedSquare != null, onConfigRemoveSelected, Modifier.weight(1f))
+                ConfigActionButton("⊘", "Clear", true, onConfigClearBoard, Modifier.weight(1f))
+                ConfigActionButton("⟲", "Reset", true, onConfigResetToStart, Modifier.weight(1f))
             }
+
+            // Piece catalog — White (inline label)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = "W",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = OverlaySecondaryText,
+                    modifier = Modifier.width(16.dp),
+                )
+                val whitePieces = listOf(PieceType.KING, PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT, PieceType.PAWN)
+                whitePieces.forEach { type ->
+                    val piece = Piece(Side.WHITE, type)
+                    val isSelected = uiState.configCatalogPiece == piece
+                    CatalogPieceButton(piece, isSelected, { onConfigSelectCatalogPiece(piece) }, Modifier.weight(1f))
+                }
+            }
+
+            // Piece catalog — Black (inline label)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = "B",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = OverlaySecondaryText,
+                    modifier = Modifier.width(16.dp),
+                )
+                val blackPieces = listOf(PieceType.KING, PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT, PieceType.PAWN)
+                blackPieces.forEach { type ->
+                    val piece = Piece(Side.BLACK, type)
+                    val isSelected = uiState.configCatalogPiece == piece
+                    CatalogPieceButton(piece, isSelected, { onConfigSelectCatalogPiece(piece) }, Modifier.weight(1f))
+                }
+            }
+
+            // Hint text
+            Text(
+                text = when {
+                    uiState.configCatalogPiece != null -> "Tap a square to place ${uiState.configCatalogPiece.symbol}. Tap piece again to deselect."
+                    uiState.configSelectedSquare != null -> "Tap destination to move, or tap again to remove."
+                    else -> "Tap a piece on the board, or pick from catalog above."
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = OverlaySecondaryText.copy(alpha = 0.7f),
+            )
         }
     }
 
-    // Done button
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = ConfigModeAccent,
-        onClick = onExitConfigMode,
+    Row(
         modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = "✓  Done — Set board",
-            modifier = Modifier
-                .padding(vertical = 12.dp)
-                .fillMaxWidth(),
-            style = MaterialTheme.typography.titleSmall,
-            color = Color(0xFF1A1200),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
+        if (uiState.hasConfigChanges) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = OverlaySurfaceColor,
+                onClick = { showDiscardConfirmation = true },
+                modifier = Modifier.weight(0.42f),
+            ) {
+                Text(
+                    text = "Cancel",
+                    modifier = Modifier
+                        .padding(vertical = 12.dp)
+                        .fillMaxWidth(),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        }
+
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = ConfigModeAccent,
+            onClick = onExitConfigMode,
+            modifier = Modifier.weight(if (uiState.hasConfigChanges) 0.58f else 1f),
+        ) {
+            Text(
+                text = "✓  Done — Set board",
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .fillMaxWidth(),
+                style = MaterialTheme.typography.titleSmall,
+                color = Color(0xFF1A1200),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
     }
 }
 
 @Composable
 private fun ConfigActionButton(
-    text: String,
+    icon: String,
     label: String,
-    enabled: Boolean = true,
+    enabled: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(8.dp),
         color = if (enabled) OverlaySurfaceColor else OverlaySurfaceColor.copy(alpha = 0.4f),
         onClick = onClick,
         enabled = enabled,
+        modifier = modifier,
     ) {
         Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
         ) {
             Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
+                text = icon,
+                style = MaterialTheme.typography.titleSmall,
                 color = if (enabled) Color.White else Color.White.copy(alpha = 0.4f),
             )
+            Spacer(Modifier.height(1.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall,
+                fontSize = 9.sp,
                 color = if (enabled) OverlaySecondaryText else OverlaySecondaryText.copy(alpha = 0.4f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CatalogPieceButton(
+    piece: Piece,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isSelected) ConfigModeAccent.copy(alpha = 0.5f) else OverlaySurfaceColor,
+        onClick = onClick,
+        modifier = modifier.then(
+            if (isSelected) Modifier.border(1.5.dp, ConfigModeAccent, RoundedCornerShape(8.dp))
+            else Modifier
+        ),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+        ) {
+            Text(
+                text = piece.symbol,
+                style = MaterialTheme.typography.titleLarge,
+                color = if (piece.side == Side.WHITE) Color.White else Color(0xFF0F172A),
             )
         }
     }

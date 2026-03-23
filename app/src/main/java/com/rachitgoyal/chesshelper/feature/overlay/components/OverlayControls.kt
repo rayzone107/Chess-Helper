@@ -28,7 +28,7 @@ import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.feature.overlay.OverlayBoardUiState
 import com.rachitgoyal.chesshelper.feature.overlay.RecommendationState
 
-private val ControlSurfaceColor = Color(0xEB1E293B)
+private val ControlSurfaceColor = Color(0xFF1E293B)
 
 @Composable
 fun OverlayControls(
@@ -64,7 +64,7 @@ fun OverlayControls(
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = ControlSurfaceColor,
                 contentColor = Color.White,
-                disabledContainerColor = ControlSurfaceColor.copy(alpha = 0.84f),
+                disabledContainerColor = ControlSurfaceColor,
                 disabledContentColor = Color(0xFF94A3B8),
             ),
             modifier = Modifier.weight(1f),

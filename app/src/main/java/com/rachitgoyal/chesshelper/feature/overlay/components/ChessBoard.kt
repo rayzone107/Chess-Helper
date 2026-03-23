@@ -47,7 +47,6 @@ fun ChessBoard(
 ) {
     val ranks = if (bottomSide == Side.WHITE) (7 downTo 0).toList() else (0..7).toList()
     val files = if (bottomSide == Side.WHITE) (0..7).toList() else (7 downTo 0).toList()
-    val squareAlpha = 0.72f
     val configBorderColor = Color(0xFFF59E0B)
 
     Box(
@@ -71,10 +70,10 @@ fun ChessBoard(
                         val isLight = (file + rank) % 2 == 0
                         val baseColor = if (isLight) boardTheme.lightSquareColor else boardTheme.darkSquareColor
                         val backgroundColor = when {
-                            isSelected -> Color(0xFF2563EB).copy(alpha = squareAlpha)
-                            squareId in legalTargets -> Color(0xFFB8E1FF).copy(alpha = squareAlpha)
-                            isLastMove -> Color(0xFFFACC15).copy(alpha = squareAlpha)
-                            else -> baseColor.copy(alpha = squareAlpha)
+                            isSelected -> Color(0xFF2563EB)
+                            squareId in legalTargets -> Color(0xFFB8E1FF)
+                            isLastMove -> Color(0xFFFACC15)
+                            else -> baseColor
                         }
                         Box(
                             modifier = Modifier

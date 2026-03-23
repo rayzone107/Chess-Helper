@@ -39,6 +39,7 @@ class OverlayWindowHost(
 
     fun show() {
         if (overlayView != null) return
+        overlayViewModel.refreshOpacity()
 
         val owner = OverlayComposeViewOwner().also {
             it.onCreate()
@@ -83,10 +84,11 @@ class OverlayWindowHost(
         OverlayWindowServiceState.isRunning = false
     }
 
-    fun resumeGame(matchId: String) {
+    fun resumeGame(matchId: String, fromMoveIndex: Int? = null) {
         val repo = MatchHistoryRepository(appContext)
         val match = repo.getById(matchId) ?: return
-        overlayViewModel.onResumeGame(match)
+        overlayViewModel.refreshOpacity()
+        overlayViewModel.onResumeGame(match, fromMoveIndex)
     }
 
     fun onConfigurationChanged() {

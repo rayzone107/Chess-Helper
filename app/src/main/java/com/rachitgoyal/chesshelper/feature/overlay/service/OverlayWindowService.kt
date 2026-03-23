@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import com.rachitgoyal.chesshelper.MainActivity
 import com.rachitgoyal.chesshelper.R
+import androidx.core.net.toUri
 
 class OverlayWindowService : LifecycleService() {
     private var overlayWindowHost: OverlayWindowHost? = null
@@ -24,6 +25,7 @@ class OverlayWindowService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         val action = intent?.action ?: ACTION_SHOW_OVERLAY
 
         if (!Settings.canDrawOverlays(this)) {
@@ -40,10 +42,11 @@ class OverlayWindowService : LifecycleService() {
 
             ACTION_RESUME_GAME -> {
                 val matchId = intent?.getStringExtra(EXTRA_MATCH_ID)
+                val fromMoveIndex = intent?.getIntExtra(EXTRA_FROM_MOVE_INDEX, -1) ?: -1
                 startForegroundCompat()
                 overlayWindowHost?.show()
                 if (matchId != null) {
-                    overlayWindowHost?.resumeGame(matchId)
+                    overlayWindowHost?.resumeGame(matchId, if (fromMoveIndex >= 0) fromMoveIndex else null)
                 }
                 START_STICKY
             }
@@ -102,7 +105,6 @@ class OverlayWindowService : LifecycleService() {
     }
 
     private fun createNotificationChannelIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val notificationManager = getSystemService(NotificationManager::class.java)
         if (notificationManager.getNotificationChannel(CHANNEL_ID) != null) return
         notificationManager.createNotificationChannel(
@@ -125,6 +127,7 @@ class OverlayWindowService : LifecycleService() {
         const val ACTION_HIDE_OVERLAY = "com.rachitgoyal.chesshelper.action.HIDE_OVERLAY"
         const val ACTION_RESUME_GAME = "com.rachitgoyal.chesshelper.action.RESUME_GAME"
         const val EXTRA_MATCH_ID = "extra_match_id"
+        const val EXTRA_FROM_MOVE_INDEX = "extra_from_move_index"
 
         private const val CHANNEL_ID = "chess_overlay_window"
         private const val NOTIFICATION_ID = 7
@@ -133,14 +136,16 @@ class OverlayWindowService : LifecycleService() {
             return Intent(context, OverlayWindowService::class.java).setAction(action)
         }
 
-        fun createResumeIntent(context: android.content.Context, matchId: String): Intent {
-            return createIntent(context, ACTION_RESUME_GAME).putExtra(EXTRA_MATCH_ID, matchId)
+        fun createResumeIntent(context: android.content.Context, matchId: String, fromMoveIndex: Int): Intent {
+            return createIntent(context, ACTION_RESUME_GAME)
+                .putExtra(EXTRA_MATCH_ID, matchId)
+                .putExtra(EXTRA_FROM_MOVE_INDEX, fromMoveIndex)
         }
 
         fun overlaySettingsIntent(packageName: String): Intent {
             return Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName"),
+                "package:$packageName".toUri(),
             )
         }
     }

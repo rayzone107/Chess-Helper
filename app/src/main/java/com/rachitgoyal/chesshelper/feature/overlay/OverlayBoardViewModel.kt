@@ -14,11 +14,13 @@ import com.rachitgoyal.chesshelper.domain.chess.ChessRules
 import com.rachitgoyal.chesshelper.domain.chess.FenParser
 import com.rachitgoyal.chesshelper.domain.chess.ChessGameStore
 import com.rachitgoyal.chesshelper.domain.chess.model.BoardTheme
+import com.rachitgoyal.chesshelper.domain.chess.model.ChessPosition
 import com.rachitgoyal.chesshelper.domain.chess.model.GameSnapshot
 import com.rachitgoyal.chesshelper.domain.chess.model.GameStatus
 import com.rachitgoyal.chesshelper.domain.chess.model.MatchRecord
 import com.rachitgoyal.chesshelper.domain.chess.model.MatchResult
 import com.rachitgoyal.chesshelper.domain.chess.model.Piece
+import com.rachitgoyal.chesshelper.domain.chess.model.PieceType
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 import com.rachitgoyal.chesshelper.engine.EngineUnavailableException
 import com.rachitgoyal.chesshelper.engine.MoveRecommendationEngine
@@ -221,11 +223,17 @@ class OverlayBoardViewModel(
 
     // ---- Resume game from history ----
 
-    fun onResumeGame(match: MatchRecord) {
+    fun onResumeGame(match: MatchRecord, fromMoveIndex: Int? = null) {
         saveCurrentGame()
+        refreshOpacity()
         val startPos = match.startingFen?.let { FenParser.parse(it).getOrNull() }
             ?: ChessRules.initialPosition()
-        store.loadGame(startPos, match.moves)
+        val movesToReplay = if (fromMoveIndex != null && fromMoveIndex < match.moves.size) {
+            match.moves.take(fromMoveIndex)
+        } else {
+            match.moves
+        }
+        store.loadGame(startPos, movesToReplay)
         recommendationRequestVersion += 1
         syncFromStore(
             recommendation = null,
@@ -251,11 +259,53 @@ class OverlayBoardViewModel(
             configUndoStack = emptyList(),
             configRedoStack = emptyList(),
             configSideToMove = uiState.sideToMove,
+            configEntryBoard = uiState.board,
+            configEntrySideToMove = uiState.sideToMove,
+            configCatalogPiece = null,
+            configValidationError = null,
+        )
+    }
+
+    fun onDiscardConfigChanges() {
+        if (!uiState.isConfigMode) return
+        uiState = uiState.copy(
+            isConfigMode = false,
+            configSelectedSquare = null,
+            configUndoStack = emptyList(),
+            configRedoStack = emptyList(),
+            configEntryBoard = null,
+            configEntrySideToMove = Side.WHITE,
+            configCatalogPiece = null,
+            configValidationError = null,
+        )
+        syncFromStore()
+    }
+
+    fun onConfigRemoveSelected() {
+        val selectedSquare = uiState.configSelectedSquare ?: return
+        if (!uiState.board.containsKey(selectedSquare)) {
+            uiState = uiState.copy(configSelectedSquare = null)
+            return
+        }
+        val previousBoard = uiState.board
+        val nextBoard = previousBoard.toMutableMap().apply { remove(selectedSquare) }
+        uiState = uiState.copy(
+            board = nextBoard,
+            configSelectedSquare = null,
+            configUndoStack = uiState.configUndoStack + listOf(previousBoard),
+            configRedoStack = emptyList(),
+            configValidationError = null,
         )
     }
 
     fun onExitConfigMode() {
+        // Validate the board position
         val board = uiState.board
+        val validationError = validateConfigBoard(board)
+        if (validationError != null) {
+            uiState = uiState.copy(configValidationError = validationError)
+            return
+        }
         val sideToMove = uiState.configSideToMove
         store.loadBoard(board, sideToMove)
         recommendationRequestVersion += 1
@@ -264,6 +314,10 @@ class OverlayBoardViewModel(
             configSelectedSquare = null,
             configUndoStack = emptyList(),
             configRedoStack = emptyList(),
+            configEntryBoard = null,
+            configEntrySideToMove = Side.WHITE,
+            configCatalogPiece = null,
+            configValidationError = null,
         )
         syncFromStore(
             recommendation = null,
@@ -277,20 +331,44 @@ class OverlayBoardViewModel(
     }
 
     fun onConfigSquareTapped(squareId: String) {
+        val catalogPiece = uiState.configCatalogPiece
         val selected = uiState.configSelectedSquare
         val board = uiState.board.toMutableMap()
+        val previousBoard = uiState.board
 
+        // --- Catalog placement mode ---
+        if (catalogPiece != null) {
+            board[squareId] = catalogPiece
+            uiState = uiState.copy(
+                board = board,
+                configSelectedSquare = null,
+                configUndoStack = uiState.configUndoStack + listOf(previousBoard),
+                configRedoStack = emptyList(),
+                configValidationError = null,
+                // Keep catalog piece selected for multiple placements
+            )
+            return
+        }
+
+        // --- Move / remove mode ---
         if (selected == null) {
-            // Pick up: select if there's a piece
+            // Select a piece if tapped on one
             if (board.containsKey(squareId)) {
-                uiState = uiState.copy(configSelectedSquare = squareId)
+                uiState = uiState.copy(configSelectedSquare = squareId, configValidationError = null)
             }
             return
         }
 
         if (selected == squareId) {
-            // Deselect
-            uiState = uiState.copy(configSelectedSquare = null)
+            // Double-tap on selected piece = remove it
+            board.remove(squareId)
+            uiState = uiState.copy(
+                board = board,
+                configSelectedSquare = null,
+                configUndoStack = uiState.configUndoStack + listOf(previousBoard),
+                configRedoStack = emptyList(),
+                configValidationError = null,
+            )
             return
         }
 
@@ -299,7 +377,6 @@ class OverlayBoardViewModel(
             uiState = uiState.copy(configSelectedSquare = null)
             return
         }
-        val previousBoard = uiState.board
         board.remove(selected)
         board[squareId] = piece
         uiState = uiState.copy(
@@ -307,7 +384,49 @@ class OverlayBoardViewModel(
             configSelectedSquare = null,
             configUndoStack = uiState.configUndoStack + listOf(previousBoard),
             configRedoStack = emptyList(),
+            configValidationError = null,
         )
+    }
+
+    fun onConfigSelectCatalogPiece(piece: Piece?) {
+        // Toggle: if same piece is selected again, deselect
+        uiState = uiState.copy(
+            configCatalogPiece = if (uiState.configCatalogPiece == piece) null else piece,
+            configSelectedSquare = null,
+            configValidationError = null,
+        )
+    }
+
+    fun onConfigDismissValidationError() {
+        uiState = uiState.copy(configValidationError = null)
+    }
+
+    private fun validateConfigBoard(board: Map<String, Piece>): String? {
+        val whiteKings = board.values.count { it.side == Side.WHITE && it.type == PieceType.KING }
+        val blackKings = board.values.count { it.side == Side.BLACK && it.type == PieceType.KING }
+        if (whiteKings != 1) return "White must have exactly one king (found $whiteKings)."
+        if (blackKings != 1) return "Black must have exactly one king (found $blackKings)."
+
+        // No pawns on rank 1 or rank 8
+        for ((sq, p) in board) {
+            if (p.type == PieceType.PAWN) {
+                val rank = sq[1].digitToInt()
+                if (rank == 1 || rank == 8) return "Pawns cannot be on rank $rank ($sq)."
+            }
+        }
+
+        // The side NOT to move must not be in check
+        val sideToMove = uiState.configSideToMove
+        val opponent = sideToMove.opposite()
+        val opponentKingSq = board.entries.find { it.value.side == opponent && it.value.type == PieceType.KING }?.key
+        if (opponentKingSq != null) {
+            val tempPosition = ChessPosition(board = board, sideToMove = sideToMove)
+            if (ChessRules.isSquareAttacked(tempPosition, opponentKingSq, sideToMove)) {
+                return "${opponent.displayName}'s king is in check, but it's ${sideToMove.displayName}'s turn."
+            }
+        }
+
+        return null
     }
 
     fun onConfigUndo() {
@@ -319,6 +438,8 @@ class OverlayBoardViewModel(
             configUndoStack = stack.dropLast(1),
             configRedoStack = uiState.configRedoStack + listOf(uiState.board),
             configSelectedSquare = null,
+            configCatalogPiece = null,
+            configValidationError = null,
         )
     }
 
@@ -331,6 +452,8 @@ class OverlayBoardViewModel(
             configRedoStack = stack.dropLast(1),
             configUndoStack = uiState.configUndoStack + listOf(uiState.board),
             configSelectedSquare = null,
+            configCatalogPiece = null,
+            configValidationError = null,
         )
     }
 
@@ -341,6 +464,8 @@ class OverlayBoardViewModel(
             configSelectedSquare = null,
             configUndoStack = uiState.configUndoStack + listOf(previousBoard),
             configRedoStack = emptyList(),
+            configCatalogPiece = null,
+            configValidationError = null,
         )
     }
 
@@ -351,12 +476,15 @@ class OverlayBoardViewModel(
             configSelectedSquare = null,
             configUndoStack = uiState.configUndoStack + listOf(previousBoard),
             configRedoStack = emptyList(),
+            configCatalogPiece = null,
+            configValidationError = null,
         )
     }
 
     fun onConfigToggleSideToMove() {
         uiState = uiState.copy(
             configSideToMove = uiState.configSideToMove.opposite(),
+            configValidationError = null,
         )
     }
 

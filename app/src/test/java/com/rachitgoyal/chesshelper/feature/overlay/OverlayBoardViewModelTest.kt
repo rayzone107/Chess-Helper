@@ -364,6 +364,51 @@ class OverlayBoardViewModelTest {
         assertTrue(viewModel.uiState.isMoveHistoryExpanded)
     }
 
+    @Test
+    fun configModeStartsCleanBecomesDirtyAfterEditAndDiscardRestoresEntryState() {
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
+        val entryBoard = viewModel.uiState.board
+        val entrySide = viewModel.uiState.sideToMove
+
+        viewModel.onEnterConfigMode()
+
+        assertTrue(viewModel.uiState.isConfigMode)
+        assertFalse(viewModel.uiState.hasConfigChanges)
+
+        viewModel.onConfigSquareTapped("e2")
+        viewModel.onConfigSquareTapped("e4")
+
+        assertTrue(viewModel.uiState.hasConfigChanges)
+        assertNotNull(viewModel.uiState.board["e4"])
+        assertNull(viewModel.uiState.board["e2"])
+
+        viewModel.onDiscardConfigChanges()
+
+        assertFalse(viewModel.uiState.isConfigMode)
+        assertFalse(viewModel.uiState.hasConfigChanges)
+        assertEquals(entryBoard, viewModel.uiState.board)
+        assertEquals(entrySide, viewModel.uiState.sideToMove)
+        assertNotNull(viewModel.uiState.board["e2"])
+        assertNull(viewModel.uiState.configEntryBoard)
+    }
+
+    @Test
+    fun configModeSideToggleAloneCountsAsChangeAndDiscardRestoresOriginalTurn() {
+        val viewModel = OverlayBoardViewModel(moveRecommendationEngine = stubEngine)
+        val entrySide = viewModel.uiState.sideToMove
+
+        viewModel.onEnterConfigMode()
+        viewModel.onConfigToggleSideToMove()
+
+        assertTrue(viewModel.uiState.hasConfigChanges)
+        assertEquals(entrySide.opposite(), viewModel.uiState.configSideToMove)
+
+        viewModel.onDiscardConfigChanges()
+
+        assertFalse(viewModel.uiState.isConfigMode)
+        assertEquals(entrySide, viewModel.uiState.sideToMove)
+    }
+
     private fun position(sideToMove: Side, vararg pieces: Pair<String, Piece>): ChessPosition {
         return ChessPosition(board = linkedMapOf(*pieces), sideToMove = sideToMove)
     }

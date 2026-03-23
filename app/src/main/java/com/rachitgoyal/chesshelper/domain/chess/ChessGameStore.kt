@@ -7,9 +7,8 @@ import com.rachitgoyal.chesshelper.domain.chess.model.Piece
 import com.rachitgoyal.chesshelper.domain.chess.model.Side
 
 class ChessGameStore(
-    initialPosition: ChessPosition = ChessRules.initialPosition(),
+    private val initialPosition: ChessPosition = ChessRules.initialPosition(),
 ) {
-    private val initialPosition: ChessPosition = initialPosition
     private var position: ChessPosition = initialPosition
     private val previousPositions = mutableListOf<ChessPosition>()
     private val moveHistory = mutableListOf<MoveRecord>()

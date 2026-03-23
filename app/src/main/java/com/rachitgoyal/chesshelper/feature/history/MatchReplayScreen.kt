@@ -9,12 +9,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -33,10 +37,12 @@ import java.util.Locale
 @Composable
 fun MatchReplayContent(
     match: MatchRecord,
+    onResumeMatch: (matchId: String, fromMoveIndex: Int) -> Unit = { _, _ -> },
 ) {
     // Step index: 0 = initial position, 1 = after move 1, etc.
     var step by remember { mutableIntStateOf(0) }
     val totalSteps = match.moves.size
+    var showResumeDialog by remember { mutableStateOf(false) }
 
     // Precompute all positions
     val positions: List<ChessPosition> = remember(match.id) {
@@ -58,6 +64,53 @@ fun MatchReplayContent(
 
     val dateFormat = SimpleDateFormat("MMM d, yyyy  h:mm a", Locale.getDefault())
     val dateStr = dateFormat.format(Date(match.timestampMillis))
+
+    if (showResumeDialog) {
+        AlertDialog(
+            onDismissRequest = { showResumeDialog = false },
+            title = { Text("Resume match") },
+            text = {
+                Text(
+                    if (step == totalSteps) {
+                        "Resume from the final position (move $totalSteps)?"
+                    } else if (step == 0) {
+                        "Start from the opening position, or jump straight to the final position?"
+                    } else {
+                        "Resume from move $step, or from the end (move $totalSteps)?"
+                    },
+                )
+            },
+            confirmButton = {
+                if (step < totalSteps) {
+                    TextButton(onClick = {
+                        showResumeDialog = false
+                        onResumeMatch(match.id, totalSteps)
+                    }) { Text("From end") }
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { showResumeDialog = false }) { Text("Cancel") }
+                    if (step == 0) {
+                        TextButton(onClick = {
+                            showResumeDialog = false
+                            onResumeMatch(match.id, 0)
+                        }) { Text("From start") }
+                    } else if (step > 0 && step < totalSteps) {
+                        TextButton(onClick = {
+                            showResumeDialog = false
+                            onResumeMatch(match.id, step)
+                        }) { Text("From move $step") }
+                    } else {
+                        TextButton(onClick = {
+                            showResumeDialog = false
+                            onResumeMatch(match.id, step)
+                        }) { Text("Resume") }
+                    }
+                }
+            },
+        )
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -132,6 +185,17 @@ fun MatchReplayContent(
             ) {
                 Text("⏭")
             }
+        }
+
+        Spacer(modifier = Modifier.size(12.dp))
+
+        // Resume in overlay button
+        Button(
+            onClick = { showResumeDialog = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Text("Resume in overlay")
         }
     }
 }

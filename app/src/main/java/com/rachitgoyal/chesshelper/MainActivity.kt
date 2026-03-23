@@ -19,6 +19,8 @@ import com.rachitgoyal.chesshelper.ui.app.ChessHelperApp
 class MainActivity : ComponentActivity() {
     private var overlayPermissionGranted by mutableStateOf(false)
     private var pendingOverlayLaunch by mutableStateOf(false)
+    private var pendingResumeMatchId: String? = null
+    private var pendingResumeFromMoveIndex: Int? = null
     private lateinit var appSettings: AppSettings
     private lateinit var matchHistoryRepository: MatchHistoryRepository
 
@@ -47,8 +49,21 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         val hadPendingLaunch = pendingOverlayLaunch
+        val pendingResumeMatchId = pendingResumeMatchId
+        val pendingResumeFromMoveIndex = pendingResumeFromMoveIndex
         refreshOverlayPermission()
-        if (hadPendingLaunch && overlayPermissionGranted) {
+        if (!overlayPermissionGranted) return
+
+        if (pendingResumeMatchId != null && pendingResumeFromMoveIndex != null) {
+            this.pendingResumeMatchId = null
+            this.pendingResumeFromMoveIndex = null
+            pendingOverlayLaunch = false
+            startForegroundService(
+                this,
+                OverlayWindowService.createResumeIntent(this, pendingResumeMatchId, pendingResumeFromMoveIndex),
+            )
+            moveTaskToBack(true)
+        } else if (hadPendingLaunch) {
             pendingOverlayLaunch = false
             startOverlayServiceAndBackground()
         }
@@ -59,6 +74,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun launchOverlay() {
+        pendingResumeMatchId = null
+        pendingResumeFromMoveIndex = null
         if (!overlayPermissionGranted) {
             pendingOverlayLaunch = true
             openOverlaySettings()
@@ -81,13 +98,17 @@ class MainActivity : ComponentActivity() {
         moveTaskToBack(true)
     }
 
-    private fun resumeMatchInOverlay(matchId: String) {
+    private fun resumeMatchInOverlay(matchId: String, fromMoveIndex: Int) {
         if (!overlayPermissionGranted) {
-            pendingOverlayLaunch = true
+            pendingOverlayLaunch = false
+            pendingResumeMatchId = matchId
+            pendingResumeFromMoveIndex = fromMoveIndex
             openOverlaySettings()
             return
         }
-        startForegroundService(this, OverlayWindowService.createResumeIntent(this, matchId))
+        pendingResumeMatchId = null
+        pendingResumeFromMoveIndex = null
+        startForegroundService(this, OverlayWindowService.createResumeIntent(this, matchId, fromMoveIndex))
         moveTaskToBack(true)
     }
 }

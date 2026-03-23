@@ -361,7 +361,7 @@ object ChessRules {
         }
     }
 
-    private fun isSquareAttacked(position: ChessPosition, square: String, bySide: Side): Boolean {
+    internal fun isSquareAttacked(position: ChessPosition, square: String, bySide: Side): Boolean {
         val targetFile = fileOf(square)
         val targetRank = rankOf(square)
 
